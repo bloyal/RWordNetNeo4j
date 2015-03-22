@@ -4,4 +4,7 @@
 library(RNeo4j);
 source('genericGraphFunctions.R');
 
-graph = startGraph("http://localhost:7474/db/data/");
+graph <- startGraph("http://localhost:7474/db/data/");
+
+#Path to WordNet dict folder
+dict <- "~/Downloads/WordNet-3.0/dict/"

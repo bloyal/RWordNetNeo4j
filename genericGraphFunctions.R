@@ -28,7 +28,8 @@ printIteration <- function(currentVal, maxVal, divisor) {
 #This is an example function used with bulkGraphUpdate() to add lots of 
 #nodes and/or relationships at once
 createExampleNodes  <- function(transaction, data){
-  query <- "CREATE (a:Node {startNodeId:startNodeId})-[b:HAS_REL {relId:relId}]->(b:Node {endNodeId:endNodeId})"  
+  query <- "CREATE (a:Node {startNodeId:{startNodeId}})-[b:HAS_REL {relId:{relId}}]->(c:Node {endNodeId:{endNodeId}})"  
+  print(query);
   appendCypher(transaction, query, 
                startNodeId = data$START_NODE_ID,
                relId = data$REL_ID,
