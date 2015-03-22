@@ -15,10 +15,15 @@ dictPath <- "~/Downloads/WordNet-3.0/dict";
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
 createLexNodes <- function(graph, dictPath) {
   lexData <- getLexNames(dictPath);
+  addIndex(graph,"LexName","fileNumber");
   bulkGraphUpdate(graph, lexData, createSingleLexNode);
 }
 
-#-----------Lower-Level Functions
+
+
+
+
+#-----------Lower-Level Functions----------
 
 getLexNames <- function(dictPath){
   lexData<-read.table(paste(dictPath,"lexnames", sep="/"), sep="\t", col.names=c("fileNumber","fileName","synCat"),stringsAsFactors=FALSE);
