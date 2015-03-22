@@ -1,0 +1,37 @@
+#genericGraphFunctions.R
+#Generic helper functions for creating a graph db in Neo4j
+
+
+
+#Helper function to optimize Neo4j transaction sizes
+bulkGraphUpdate <- function(graph, data, creationFunction, transactionMax=1000){
+  t <- newTransaction(graph);
+  transactionCounter <- 0;
+  for (i in 1:nrow(data)){
+    transactionCounter <- transactionCounter + 1;
+    creationFunction(t, data[i,]);
+    if (transactionCounter == transactionMax) {
+      commit(t);
+      t <- newTransaction(graph);
+      transactionCounter <- 0;
+    }
+    printIteration(i,nrow(data),1000);
+  }
+  commit(t);
+}
+
+#Helper function to print out how far along we are in a loop
+printIteration <- function(currentVal, maxVal, divisor) {
+  if (currentVal %% divisor == 0 ) { print(paste(round((currentVal/maxVal)*100), "% Complete", sep="") )};
+}
+
+#This is an example function used with bulkGraphUpdate() to add lots of 
+#nodes and/or relationships at once
+createExampleNodes  <- function(transaction, data){
+  query <- "CREATE (a:Node {startNodeId:startNodeId})-[b:HAS_REL {relId:relId}]->(b:Node {endNodeId:endNodeId})"  
+  appendCypher(transaction, query, 
+               startNodeId = data$START_NODE_ID,
+               relId = data$REL_ID,
+               endNodeId = data$END_NODE_ID
+  );
+}
