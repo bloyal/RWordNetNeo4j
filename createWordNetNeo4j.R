@@ -6,21 +6,31 @@ library(rvest);
 library(R.utils);
 source('genericGraphFunctions.R');
 
-graph <- startGraph("http://localhost:7474/db/data/");
-
 #Path to WordNet dict folder
-dictPath <- "~/Downloads/WordNet-3.0/dict";
+#dictPath <- "~/Downloads/WordNet-3.0/dict";
 
 # Create nodes representing the 45 lexicographer files described at
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
-createLexNodes <- function(graph, dictPath) {
+createLexNodes <- function(dictPath = "~/Downloads/WordNet-3.0/dict", graphPath = "http://localhost:7474/db/data/") {
+  graph <- startGraph(graphPath);
   lexData <- getLexNames(dictPath);
   addIndex(graph,"LexName","fileNumber");
   bulkGraphUpdate(graph, lexData, createSingleLexNode);
 }
 
-
-
+readVerbDataFile <- function(path="~/Downloads/WordNet-3.0/dict/data.verb"){
+  verbData <- readLines(path);
+  verbData <- verbData[30:length(verbData)];
+  lapply(verbData, function(x){ 
+    raw<-strsplit(x, " ");
+    wordCount<-as.integer(row[[1]][4]);
+    words<-row[[1]][5:8]
+    list(
+        offset = raw[[1]][1],
+        pos = "Verb"
+      )
+    });
+}
 
 
 #-----------Lower-Level Functions----------
