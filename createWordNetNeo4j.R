@@ -1,18 +1,23 @@
 #createWordNetNeo4j.R
 #Functions for creating a WordNet db in Neo4j
+setwd("~/GitHub/RWordNetNeo4j")
 
 library(RNeo4j);
 library(rvest);
 library(R.utils);
 source('genericGraphFunctions.R');
 
-#Path to WordNet dict folder
-#dictPath <- "~/Downloads/WordNet-3.0/dict";
+#Start empty Neo4j graph
+newGraph <- function(path="http://localhost:7474/db/data/") {
+  graph <- startGraph("http://localhost:7474/db/data/");
+  clear(graph, input=FALSE);
+  graph;
+}
 
 # Create nodes representing the 45 lexicographer files described at
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
-createLexNodes <- function(dictPath = "~/Downloads/WordNet-3.0/dict", graphPath = "http://localhost:7474/db/data/") {
-  graph <- startGraph(graphPath);
+createLexNodes <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict") {
+#  graph <- startGraph(graphPath);
   lexData <- getLexNames(dictPath);
   addIndex(graph,"LexName","fileNumber");
   bulkGraphUpdate(graph, lexData, createSingleLexNode);
