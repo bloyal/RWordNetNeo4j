@@ -31,6 +31,7 @@ setwd("~/GitHub/RWordNetNeo4j")
 library(RNeo4j);
 library(rvest);
 library(R.utils);
+library(stringr);
 source('genericGraphFunctions.R');
 
 #Start empty Neo4j graph
@@ -116,4 +117,32 @@ createSingleLexNode  <- function(transaction, data){
 
 findSynsetData <- function(offset, data){
   data[grep(paste("^",offset, " .*",sep=""),data)]
+}
+
+extractSynsetId <- function(dataRecord){
+  substr(dataRecord,1,8);
+}
+
+extractSynsetLexFileNum <- function(dataRecord){
+  substr(dataRecord,10,11);
+}
+
+extractSynsetType <- function(dataRecord){
+  switch(substr(dataRecord,13,13),
+         n = "Noun",
+         v = "Verb",
+         a = "Adjective",
+         s = "Adjective Sattellite",
+         r = "Adverb");
+}
+
+extractSynsetWordCount <- function(dataRecord){
+  as.numeric(substr(dataRecord, 15,16));
+}
+
+extractSynsetWords <- function(dataRecord){
+  wordDataCnt<-extractSynsetWordCount(dataRecord) * 2;
+  dataRecord <- substr(dataRecord, 18,nchar(dataRecord));
+  wordData <- unlist(str_extract_all(dataRecord, "\\w+"))[1:wordDataCnt];
+  wordData[c(TRUE,FALSE)];
 }
