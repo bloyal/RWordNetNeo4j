@@ -146,3 +146,39 @@ extractSynsetWords <- function(dataRecord){
   wordData <- unlist(str_extract_all(dataRecord, "\\w+"))[1:wordDataCnt];
   wordData[c(TRUE,FALSE)];
 }
+
+extractSynsetPointerCount <- function(dataRecord){
+  as.numeric(str_extract(dataRecord, "\\b[0-9]{3}\\b"));
+}
+
+translateSynsetPointerSymbol <- function(symbol, pos){
+  if(symbol=='\\'){
+    switch(pos,
+           Adjective = "Pertainym (Pertains to Noun)",
+           Adverb = "Derived from Adjective")
+    }
+  else if(symbol=="~"){"Hyponym"}
+  else if(symbol=="~i"){"Instance Hyponym"}
+  else if(symbol=="-c"){"Member of this Domain - TOPIC"}
+  else if(symbol=="-r"){"Member of this Domain - REGION"}
+  else if(symbol=="-u"){"Member of this Domain - USAGE"}
+  else if(symbol==";c"){"Domain of Synset - TOPIC"}
+  else if(symbol==";r"){"Domain of Synset - REGION"}
+  else if(symbol==";u"){"Domain of Synset - USAGE"}
+  else if(symbol=="@"){"Hypernym"}
+  else if(symbol=="@i"){"Instance Hypernym"}
+  else if(symbol=="*"){"Entailment"}
+  else if(symbol=="&"){"Similar To"}
+  else if(symbol=="#m"){"Member Holonym"}
+  else if(symbol=="#p"){"Part Holonym"}
+  else if(symbol=="#s"){"Substance Holonym"}
+  else if(symbol=="%m"){"Member Meronym"}
+  else if(symbol=="%p"){"Part Meronym"}
+  else if(symbol=="%s"){"Substance Meronym"}
+  else if(symbol=="^"){"Also See"}
+  else if(symbol=="+"){"Derivationally Related Form"}
+  else if(symbol=="<"){"Participle of Verb"}
+  else if(symbol=="="){"Attribute"}
+  else if(symbol==">"){"Cause"}
+  else if(symbol=="$"){"Verb Group"}
+}
