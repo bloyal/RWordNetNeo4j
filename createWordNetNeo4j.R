@@ -118,37 +118,60 @@ createSingleLexNode  <- function(transaction, data){
 findSynsetData <- function(offset, data){
   data[grep(paste("^",offset, " .*",sep=""),data)]
 }
+#Deprecated for vectorized implementation beloww
+# extractSynsetId <- function(dataRecord){
+#   substr(dataRecord,1,8);
+# }
+# 
+# extractSynsetLexFileNum <- function(dataRecord){
+#   substr(dataRecord,10,11);
+# }
+# 
+# extractSynsetType <- function(dataRecord){
+#   switch(substr(dataRecord,13,13),
+#          n = "Noun",
+#          v = "Verb",
+#          a = "Adjective",
+#          s = "Adjective Sattellite",
+#          r = "Adverb");
+# }
+# 
+# extractSynsetWordCount <- function(dataRecord){
+#   as.numeric(substr(dataRecord, 15,16));
+# }
+# 
+# extractSynsetWords <- function(dataRecord){
+#   wordDataCnt<-extractSynsetWordCount(dataRecord) * 2;
+#   dataRecord <- substr(dataRecord, 18,nchar(dataRecord));
+#   wordData <- unlist(str_extract_all(dataRecord, "\\w+"))[1:wordDataCnt];
+#   wordData[c(TRUE,FALSE)];
+# }
 
-extractSynsetId <- function(dataRecord){
-  substr(dataRecord,1,8);
-}
-
-extractSynsetLexFileNum <- function(dataRecord){
-  substr(dataRecord,10,11);
-}
-
-extractSynsetType <- function(dataRecord){
-  switch(substr(dataRecord,13,13),
-         n = "Noun",
-         v = "Verb",
-         a = "Adjective",
-         s = "Adjective Sattellite",
-         r = "Adverb");
-}
-
-extractSynsetWordCount <- function(dataRecord){
-  as.numeric(substr(dataRecord, 15,16));
-}
-
-extractSynsetWords <- function(dataRecord){
-  wordDataCnt<-extractSynsetWordCount(dataRecord) * 2;
-  dataRecord <- substr(dataRecord, 18,nchar(dataRecord));
-  wordData <- unlist(str_extract_all(dataRecord, "\\w+"))[1:wordDataCnt];
-  wordData[c(TRUE,FALSE)];
+#---vectorized way to do this with regular expressions
+isVerbSynset <- function(dataRecord){
+  str_detect(dataRecord,"\\d{8} \\d{2} v");
 }
 
 extractSynsetPointerCount <- function(dataRecord){
   as.numeric(str_extract(dataRecord, "\\b[0-9]{3}\\b"));
+}
+
+matchVerbSysetParts <- function(dataRecord){
+  str_match_all(dataRecord,"^(\\d{8}) (\\d{2}) ([nvasr]) (\\d+) (.+) (\\d{3}) (\\S+ .+ \\d{4}) (.*) \\| (.+)$");
+}
+
+matchNonVerbSysetParts <- function(dataRecord){
+  str_match_all(dataRecord,"^(\\d{8}) (\\d{2}) ([nvasr]) (\\d+) (.+) (\\d{3}) (\\S+ .+ \\d{4}) \\| (.+)$");
+}
+
+processSynsetParts <- function(synsetParts){
+  synsetParts <- ifelse(isVerbSynset(synsetParts), 
+       matchVerbSysetParts(synsetParts), 
+       matchNonVerbSysetParts(synsetParts));
+  lapply(synsetParts, function(x){
+    x<-x[1,2:ncol(x)];
+    x;
+    });
 }
 
 translateSynsetPointerSymbol <- function(symbol, pos){
