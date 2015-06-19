@@ -32,6 +32,7 @@ library(RNeo4j);
 library(rvest);
 library(R.utils);
 library(stringr);
+library(plyr);
 source('genericGraphFunctions.R');
 
 #Start empty Neo4j graph
@@ -118,60 +119,85 @@ createSingleLexNode  <- function(transaction, data){
 findSynsetData <- function(offset, data){
   data[grep(paste("^",offset, " .*",sep=""),data)]
 }
-#Deprecated for vectorized implementation beloww
-# extractSynsetId <- function(dataRecord){
-#   substr(dataRecord,1,8);
-# }
-# 
-# extractSynsetLexFileNum <- function(dataRecord){
-#   substr(dataRecord,10,11);
-# }
-# 
-# extractSynsetType <- function(dataRecord){
-#   switch(substr(dataRecord,13,13),
-#          n = "Noun",
-#          v = "Verb",
-#          a = "Adjective",
-#          s = "Adjective Sattellite",
-#          r = "Adverb");
-# }
-# 
-# extractSynsetWordCount <- function(dataRecord){
-#   as.numeric(substr(dataRecord, 15,16));
-# }
-# 
-# extractSynsetWords <- function(dataRecord){
-#   wordDataCnt<-extractSynsetWordCount(dataRecord) * 2;
-#   dataRecord <- substr(dataRecord, 18,nchar(dataRecord));
-#   wordData <- unlist(str_extract_all(dataRecord, "\\w+"))[1:wordDataCnt];
-#   wordData[c(TRUE,FALSE)];
-# }
 
-#---vectorized way to do this with regular expressions
-isVerbSynset <- function(dataRecord){
-  str_detect(dataRecord,"\\d{8} \\d{2} v");
-}
-
-extractSynsetPointerCount <- function(dataRecord){
-  as.numeric(str_extract(dataRecord, "\\b[0-9]{3}\\b"));
-}
-
-matchVerbSysetParts <- function(dataRecord){
-  str_match_all(dataRecord,"^(\\d{8}) (\\d{2}) ([nvasr]) (\\d+) (.+) (\\d{3}) (\\S+ .+ \\d{4}) (.*) \\| (.+)$");
-}
-
-matchNonVerbSysetParts <- function(dataRecord){
-  str_match_all(dataRecord,"^(\\d{8}) (\\d{2}) ([nvasr]) (\\d+) (.+) (\\d{3}) (\\S+ .+ \\d{4}) \\| (.+)$");
+matchSynsetParts <- function(dataRecord){
+  str_match_all(dataRecord,"^(\\d{8}) (\\d{2}) ([nvasr]) (\\w+) (.+) (\\d{3}) (\\S+ .+) \\| (.+)$");
 }
 
 processSynsetParts <- function(synsetParts){
-  synsetParts <- ifelse(isVerbSynset(synsetParts), 
-       matchVerbSysetParts(synsetParts), 
-       matchNonVerbSysetParts(synsetParts));
-  lapply(synsetParts, function(x){
-    x<-x[1,2:ncol(x)];
-    x;
-    });
+  synsetParts <- matchSynsetParts(synsetParts)
+  ldply(synsetParts, function(x) data.frame(synsetOffset = x[2], 
+                                          lexFilenum = x[3], 
+                                          #lexFileName = translateLexFilenum(x[3]), 
+                                          pos = x[4],
+                                          #posName = translatePOS(x[4]),
+                                          wCnt = strtoi(x[5],16),
+                                          words = x[6],
+                                          pCnt = as.integer(x[7]),
+                                          pointers = str_match(x[8],"^.+ \\d{4}"),
+                                          frames = str_match(x[8],"\\W\\d{2} \\+ \\d{2} .+$"),
+                                          gloss = x[9],
+                                          stringsAsFactors = FALSE));
+}
+
+translatePOS <-function(posSymbol){
+  switch(posSymbol,
+         n = "Noun",
+         v = "Verb",
+         a = "Adjective",
+         s = "Adjective Sattellite",
+         r = "Adverb",
+         other = NA
+         );
+}
+
+translateLexFilenum <- function(lexFilenum){
+  switch(lexFilenum,
+         "00"="all adjective clusters",
+         "01"="relational adjectives (pertainyms)",
+         "02"="all adverbs",
+         "03"="unique beginner for nouns",
+         "04"="nouns denoting acts or actions",
+         "05"="nouns denoting animals",
+         "06"="nouns denoting man-made objects",
+         "07"="nouns denoting attributes of people and objects",
+         "08"="nouns denoting body parts",
+         "09"="nouns denoting cognitive processes and contents",
+         "10"="nouns denoting communicative processes and contents",
+         "11"="nouns denoting natural events",
+         "12"="nouns denoting feelings and emotions",
+         "13"="nouns denoting foods and drinks",
+         "14"="nouns denoting groupings of people or objects",
+         "15"="nouns denoting spatial position",
+         "16"="nouns denoting goals",
+         "17"="nouns denoting natural objects (not man-made)",
+         "18"="nouns denoting people",
+         "19"="nouns denoting natural phenomena",
+         "20"="nouns denoting plants",
+         "21"="nouns denoting possession and transfer of possession",
+         "22"="nouns denoting natural processes",
+         "23"="nouns denoting quantities and units of measure",
+         "24"="nouns denoting relations between people or things or ideas",
+         "25"="nouns denoting two and three dimensional shapes",
+         "26"="nouns denoting stable states of affairs",
+         "27"="nouns denoting substances",
+         "28"="nouns denoting time and temporal relations",
+         "29"="verbs of grooming, dressing and bodily care",
+         "30"="verbs of size, temperature change, intensifying, etc.",
+         "31"="verbs of thinking, judging, analyzing, doubting",
+         "32"="verbs of telling, asking, ordering, singing",
+         "33"="verbs of fighting, athletic activities",
+         "34"="verbs of eating and drinking",
+         "35"="verbs of touching, hitting, tying, digging",
+         "36"="verbs of sewing, baking, painting, performing",
+         "37"="verbs of feeling",
+         "38"="verbs of walking, flying, swimming",
+         "39"="verbs of seeing, hearing, feeling",
+         "40"="verbs of buying, selling, owning",
+         "41"="verbs of political and social activities and events",
+         "42"="verbs of being, having, spatial relations",
+         "43"="verbs of raining, snowing, thawing, thundering",
+         "44"="participial adjectives");
 }
 
 translateSynsetPointerSymbol <- function(symbol, pos){
