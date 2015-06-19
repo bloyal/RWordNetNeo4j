@@ -29,7 +29,6 @@
 setwd("~/GitHub/RWordNetNeo4j")
 
 library(RNeo4j);
-library(rvest);
 library(R.utils);
 library(stringr);
 library(plyr);
@@ -39,37 +38,27 @@ source('genericGraphFunctions.R');
 newGraph <- function(path="http://localhost:7474/db/data/") {
   graph <- startGraph("http://localhost:7474/db/data/");
   clear(graph, input=FALSE);
-  graph;
+  return(graph);
 }
 
 # Create nodes representing the 45 lexicographer files described at
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
 createLexNodes <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict") {
-#  graph <- startGraph(graphPath);
+  print("Creating lexicographer file nodes");
   lexData <- getLexNames(dictPath);
   addIndex(graph,"LexName","fileNumber");
   bulkGraphUpdate(graph, lexData, createSingleLexNode);
 }
 
-readVerbDataFile <- function(path="~/Downloads/WordNet-3.0/dict/data.verb"){
-  #path<-"~/Downloads/WordNet-3.0/dict/data.verb"
-  verbData <- readLines(path);
-  verbData <- verbData[30:length(verbData)];
-  
-  verbIndex <- readLines("~/Downloads/WordNet-3.0/dict/index.verb");
-  verbIndex <- verbIndex[30:length(verbIndex)];
-  
-  lapply(verbData, function(x){ 
-    raw<-strsplit(x, " ");
-    wordCount<-as.integer(row[[1]][4]);
-    words<-row[[1]][5:8]
-    list(
-        offset = raw[[1]][1],
-        pos = "Verb"
-      )
-    });
+#Read in POS data from dict folder
+readPOSdata <- function(folderPath="~/Downloads/WordNet-3.0/dict/"){
+  print("Reading POS data");
+  advData<-readAdvData(folderPath);
+  verbData<-readVerbData(folderPath);
+  adjData<-readAdjData(folderPath);
+  nounData<-readNounData(folderPath);
+  list(advData, verbData, adjData, nounData);
 }
-
 
 #-----------Lower-Level Functions----------
 
@@ -88,18 +77,24 @@ updateSynCat <- function(synCat){
   return(synCat);
 }
 
-getLexDescriptions <- function(){
-  lexHTML <- getHTML("http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html");
-  lexDesc <- lexHTML %>% html_nodes("table") %>% html_table(header=TRUE, fill=TRUE) %>% data.frame();
-  lexDesc<-lexDesc$Contents[2:length(lexDesc$Contents)];
-  lexDesc <- gsub("\n","",lexDesc);
-  lexDesc <- capitalize(lexDesc);
-  return(lexDesc);
+getLexDescriptions <- function(path="lexFileLookup.csv"){
+  lexDesc <-read.csv(path);
+  lexDesc<-lexDesc$Contents#[2:length(lexDesc$Contents)];
+  capitalize(lexDesc);
 }
 
-getHTML <- function(url){
-  html(url);
-}
+# getLexDescriptions <- function(){
+#   lexHTML <- getHTML("http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html");
+#   lexDesc <- lexHTML %>% html_nodes("table") %>% html_table(header=TRUE, fill=TRUE) %>% data.frame();
+#   lexDesc<-lexDesc$Contents[2:length(lexDesc$Contents)];
+#   lexDesc <- gsub("\n","",lexDesc);
+#   lexDesc <- capitalize(lexDesc);
+#   return(lexDesc);
+# }
+#
+# getHTML <- function(url){
+#   html(url);
+# }
 
 createSingleLexNode  <- function(transaction, data){
   query <- "CREATE (:LexName {
@@ -120,24 +115,34 @@ findSynsetData <- function(offset, data){
   data[grep(paste("^",offset, " .*",sep=""),data)]
 }
 
-matchSynsetParts <- function(dataRecord){
-  str_match_all(dataRecord,"^(\\d{8}) (\\d{2}) ([nvasr]) (\\w+) (.+) (\\d{3}) (\\S+ .+) \\| (.+)$");
+readPosDataFile <- function(path="~/Downloads/WordNet-3.0/dict/data.verb"){
+  posData <- readLines(path);
+  posData <- posData[30:length(posData)];
+  processSynsetData(posData);
 }
 
-processSynsetParts <- function(synsetParts){
-  synsetParts <- matchSynsetParts(synsetParts)
+processSynsetData <- function(synsetData){
+  synsetData <- matchSynsetParts(synsetData);
+  convertSynsetPartsToDf(synsetData);
+}
+
+matchSynsetParts <- function(dataRecord){
+  str_match_all(dataRecord,"^(\\d{8}) (\\d{2}) ([nvasr]) (\\w{2}) (.+) \\| (.+)$");
+}
+
+convertSynsetPartsToDf <- function(synsetParts){
   ldply(synsetParts, function(x) data.frame(synsetOffset = x[2], 
-                                          lexFilenum = x[3], 
-                                          #lexFileName = translateLexFilenum(x[3]), 
-                                          pos = x[4],
-                                          #posName = translatePOS(x[4]),
-                                          wCnt = strtoi(x[5],16),
-                                          words = x[6],
-                                          pCnt = as.integer(x[7]),
-                                          pointers = str_match(x[8],"^.+ \\d{4}"),
-                                          frames = str_match(x[8],"\\W\\d{2} \\+ \\d{2} .+$"),
-                                          gloss = x[9],
-                                          stringsAsFactors = FALSE));
+                                            lexFilenum = x[3], 
+                                            lexFileName = translateLexFilenum(x[3]), 
+                                            pos = x[4],
+                                            posName = translatePOS(x[4]),
+                                            wCnt = strtoi(x[5],16),
+                                            words = str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[2],
+                                            pCnt = as.integer(str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[3]),
+                                            pointers = str_match(x[6],"\\d{3} (.+$)")[2],
+                                            frames = str_match(x[6],"\\W\\d{2} \\+ \\d{2} .+$"),
+                                            gloss = x[7],
+                                            stringsAsFactors = FALSE));
 }
 
 translatePOS <-function(posSymbol){
@@ -198,6 +203,30 @@ translateLexFilenum <- function(lexFilenum){
          "42"="verbs of being, having, spatial relations",
          "43"="verbs of raining, snowing, thawing, thundering",
          "44"="participial adjectives");
+}
+
+readVerbData <- function(path="~/Downloads/WordNet-3.0/dict/"){
+  print("Reading verb data");
+  path<-paste(path,"data.verb",sep="")
+  readPosDataFile(path);
+}
+
+readAdvData <- function(path="~/Downloads/WordNet-3.0/dict/"){
+  print("Reading adverb data");
+  path<-paste(path,"data.adv",sep="")
+  readPosDataFile(path);
+}
+
+readNounData <- function(path="~/Downloads/WordNet-3.0/dict/"){
+  print("Reading noun data");
+  path<-paste(path,"data.noun",sep="")
+  readPosDataFile(path);
+}
+
+readAdjData <- function(path="~/Downloads/WordNet-3.0/dict/"){
+  print("Reading adjective data");
+  path<-paste(path,"data.adj",sep="")
+  readPosDataFile(path);
 }
 
 translateSynsetPointerSymbol <- function(symbol, pos){
