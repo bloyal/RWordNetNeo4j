@@ -57,7 +57,14 @@ readPOSdata <- function(folderPath="~/Downloads/WordNet-3.0/dict/"){
   verbData<-readVerbData(folderPath);
   adjData<-readAdjData(folderPath);
   nounData<-readNounData(folderPath);
+  #rbind(advData, verbData, adjData, nounData);
   list(advData, verbData, adjData, nounData);
+}
+
+createSynsetNodes <- function(graph,posList){
+  print("Creating Syset Nodes");
+  addIndex(graph, "Synset","synsetOffset");
+  invisible(lapply(posList, createPOSSpecificSynsetNodes, graph));
 }
 
 #-----------Lower-Level Functions----------
@@ -205,36 +212,12 @@ translateLexFilenum <- function(lexFilenum){
          "44"="participial adjectives");
 }
 
-readVerbData <- function(path="~/Downloads/WordNet-3.0/dict/"){
-  print("Reading verb data");
-  path<-paste(path,"data.verb",sep="")
-  readPosDataFile(path);
-}
-
-readAdvData <- function(path="~/Downloads/WordNet-3.0/dict/"){
-  print("Reading adverb data");
-  path<-paste(path,"data.adv",sep="")
-  readPosDataFile(path);
-}
-
-readNounData <- function(path="~/Downloads/WordNet-3.0/dict/"){
-  print("Reading noun data");
-  path<-paste(path,"data.noun",sep="")
-  readPosDataFile(path);
-}
-
-readAdjData <- function(path="~/Downloads/WordNet-3.0/dict/"){
-  print("Reading adjective data");
-  path<-paste(path,"data.adj",sep="")
-  readPosDataFile(path);
-}
-
 translateSynsetPointerSymbol <- function(symbol, pos){
   if(symbol=='\\'){
     switch(pos,
            Adjective = "Pertainym (Pertains to Noun)",
            Adverb = "Derived from Adjective")
-    }
+  }
   else if(symbol=="~"){"Hyponym"}
   else if(symbol=="~i"){"Instance Hyponym"}
   else if(symbol=="-c"){"Member of this Domain - TOPIC"}
@@ -260,3 +243,62 @@ translateSynsetPointerSymbol <- function(symbol, pos){
   else if(symbol==">"){"Cause"}
   else if(symbol=="$"){"Verb Group"}
 }
+
+readVerbData <- function(path="~/Downloads/WordNet-3.0/dict/"){
+  print("Reading verb data");
+  path<-paste(path,"data.verb",sep="")
+  verbData<-readPosDataFile(path);
+  #For verbs, need special step to remove frame from end of pointers
+  removeFramesFromPointers(verbData);
+}
+
+removeFramesFromPointers<-function(verbData){
+  verbData$pointers<-str_replace(verbData$pointers," \\d{2} \\+ \\d{2} \\d{2}.*$","");
+  return(verbData);
+}
+
+readAdvData <- function(path="~/Downloads/WordNet-3.0/dict/"){
+  print("Reading adverb data");
+  path<-paste(path,"data.adv",sep="")
+  readPosDataFile(path);
+}
+
+readNounData <- function(path="~/Downloads/WordNet-3.0/dict/"){
+  print("Reading noun data");
+  path<-paste(path,"data.noun",sep="")
+  readPosDataFile(path);
+}
+
+readAdjData <- function(path="~/Downloads/WordNet-3.0/dict/"){
+  print("Reading adjective data");
+  path<-paste(path,"data.adj",sep="")
+  readPosDataFile(path);
+}
+
+createPOSSpecificSynsetNodes <- function(synsetData, graph){
+  print(paste("Creating ",synsetData[1,5]," synsets",sep=""));
+  bulkGraphUpdate(graph, synsetData, createSingleSynsetNode);
+}
+
+createSingleSynsetNode  <- function(transaction, data){
+  query <- "CREATE (:Synset {
+                      synsetOffset:{synsetOffset},
+                      lexFilenum:{lexFilenum},
+                      lexFileName:{lexFileName},
+                      pos:{pos},
+                      posName:{posName},
+                      wCnt:{wCnt},
+                      pCnt:{pCnt},
+                      gloss:{gloss}
+                    })";  
+  appendCypher(transaction, query, 
+               synsetOffset = data$synsetOffset,
+               lexFilenum = data$lexFilenum,
+               lexFileName = data$lexFileName,
+               pos = data$pos,
+               posName = data$posName,
+               wCnt = data$wCnt,
+               pCnt = data$pCnt,
+               gloss = data$gloss
+  );
+}  
