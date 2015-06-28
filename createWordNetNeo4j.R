@@ -67,6 +67,12 @@ createSynsetNodes <- function(graph,posList){
   invisible(lapply(posList, createPOSSpecificSynsetNodes, graph));
 }
 
+createWords <- function(graph, posList){
+  print("Creating Words");
+  addIndex(graph, "Word", "name");
+  invisible(lapply(posList, createWordNodes, graph));
+}
+
 #-----------Lower-Level Functions----------
 
 getLexNames <- function(dictPath){
@@ -147,7 +153,7 @@ convertSynsetPartsToDf <- function(synsetParts){
                                             words = str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[2],
                                             pCnt = as.integer(str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[3]),
                                             pointers = str_match(x[6],"\\d{3} (.+$)")[2],
-                                            frames = str_match(x[6],"\\W\\d{2} \\+ \\d{2} .+$"),
+                                            frames = str_match(x[6],"\\W(\\d{2} \\+ \\d{2} .+)$")[2],
                                             gloss = x[7],
                                             stringsAsFactors = FALSE));
 }
@@ -249,6 +255,8 @@ readVerbData <- function(path="~/Downloads/WordNet-3.0/dict/"){
   path<-paste(path,"data.verb",sep="")
   verbData<-readPosDataFile(path);
   #For verbs, need special step to remove frame from end of pointers
+  #Also need to remove space from front of frames!
+  #verbData$frames <- 
   removeFramesFromPointers(verbData);
 }
 
@@ -301,4 +309,21 @@ createSingleSynsetNode  <- function(transaction, data){
                pCnt = data$pCnt,
                gloss = data$gloss
   );
-}  
+}
+
+getDataFileHeader <- function(){
+  examplePath <- "~/Downloads/WordNet-3.0/dict/data.adv";
+  exampleData <- readLines(examplePath);
+  exampleData[1:29];
+}
+
+createTestDataFile <- function(testData, fileName){
+  header <- getDataFileHeader();
+  body <- testData[,c("synsetOffset","lexFilenum","pos","wCnt","words","pCnt","pointers","frames","gloss")];
+  body$wCnt <- str_pad(body$wCnt,2,"left", "0");
+  body$pCnt <- str_pad(body$pCnt,3,"left", "0");
+  body$gloss <- paste("| ", body$gloss, sep="");
+  #body$frames <- paste(body$frames, "|", sep="");
+  write.table(header, file=fileName, col.names = FALSE, row.names = FALSE, quote=FALSE);
+  write.table(body, append=TRUE, na = "", file=fileName, col.names = FALSE, row.names = FALSE, quote=FALSE);
+}
