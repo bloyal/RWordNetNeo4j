@@ -29,20 +29,17 @@
 setwd("~/GitHub/RWordNetNeo4j")
 
 library(RNeo4j);
+#6/28/15: Need to revert back to httr version 0.6.1. for now 
+#remove.packages("httr")
+#install.packages("http://cran.r-project.org/src/contrib/Archive/httr/httr_0.6.1.tar.gz", repos=NULL, type="source")
+#library(httr);
 library(R.utils);
 library(stringr);
 library(plyr);
 source('genericGraphFunctions.R');
 source('testFunctions.R');
 
-#runIntegrationTests();
-
-#Start empty Neo4j graph
-newGraph <- function(path="http://localhost:7474/db/data/") {
-  graph <- startGraph(path);
-  clear(graph, input=FALSE);
-  return(graph);
-}
+runIntegrationTests();
 
 # Create nodes representing the 45 lexicographer files described at
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html

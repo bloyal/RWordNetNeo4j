@@ -36,3 +36,15 @@ createExampleNodes  <- function(transaction, data){
                endNodeId = data$END_NODE_ID
   );
 }
+
+countNodesbyLabel <- function(graph, label){
+  nodes <- getLabeledNodes(graph, label);
+  return(length(nodes));
+}
+
+#Start empty Neo4j graph
+newGraph <- function(url="http://localhost:7474/db/data/", username="neo4j", password="graph") {
+  graph <- startGraph(url, username, password);
+  clear(graph, input=FALSE);
+  return(graph);
+}

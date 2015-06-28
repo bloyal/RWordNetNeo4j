@@ -11,7 +11,7 @@ runIntegrationTests <-function(dataPath="./testData/"){
   unitTest("Adverb data count", nrow(testData$adv),25);
   
   #Initiate graph
-  graph<-newGraph();
+  graph<-newGraph(username="neo4j", password="graph");
   
   #Create lex nodes
   createLexNodes(graph, verbose=FALSE);
@@ -22,7 +22,7 @@ runIntegrationTests <-function(dataPath="./testData/"){
   unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),130);
   
   #Create word notes
-  unitTest("Word node count", countNodesbyLabel(graph, "Word"),130);
+  unitTest("Word node count", countNodesbyLabel(graph, "Word"),223);
 }
 
 unitTest <- function(testName, actualValue, expectedValue){
@@ -51,9 +51,4 @@ createTestDataFile <- function(testData, fileName){
   #body$frames <- paste(body$frames, "|", sep="");
   write.table(header, file=fileName, col.names = FALSE, row.names = FALSE, quote=FALSE);
   write.table(body, append=TRUE, na = "", file=fileName, col.names = FALSE, row.names = FALSE, quote=FALSE);
-}
-
-countNodesbyLabel <- function(graph, label){
-  nodes <- getLabeledNodes(graph, label);
-  return(length(nodes));
 }
