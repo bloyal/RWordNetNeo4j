@@ -33,38 +33,41 @@ library(R.utils);
 library(stringr);
 library(plyr);
 source('genericGraphFunctions.R');
+source('testFunctions.R');
+
+#runIntegrationTests();
 
 #Start empty Neo4j graph
 newGraph <- function(path="http://localhost:7474/db/data/") {
-  graph <- startGraph("http://localhost:7474/db/data/");
+  graph <- startGraph(path);
   clear(graph, input=FALSE);
   return(graph);
 }
 
 # Create nodes representing the 45 lexicographer files described at
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
-createLexNodes <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict") {
-  print("Creating lexicographer file nodes");
+createLexNodes <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE) {
+  if(verbose) {print("Creating lexicographer file nodes");}
   lexData <- getLexNames(dictPath);
   addIndex(graph,"LexName","fileNumber");
   bulkGraphUpdate(graph, lexData, createSingleLexNode);
 }
 
 #Read in POS data from dict folder
-readPOSdata <- function(folderPath="~/Downloads/WordNet-3.0/dict/"){
-  print("Reading POS data");
-  advData<-readAdvData(folderPath);
-  verbData<-readVerbData(folderPath);
-  adjData<-readAdjData(folderPath);
-  nounData<-readNounData(folderPath);
+readPOSdata <- function(folderPath="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+  if(verbose){print("Reading POS data");}
+  advData<-readAdvData(folderPath, verbose);
+  verbData<-readVerbData(folderPath, verbose);
+  adjData<-readAdjData(folderPath, verbose);
+  nounData<-readNounData(folderPath, verbose);
   #rbind(advData, verbData, adjData, nounData);
-  list(advData, verbData, adjData, nounData);
+  list(adv = advData, verb = verbData, adj = adjData, noun = nounData);
 }
 
-createSynsetNodes <- function(graph,posList){
-  print("Creating Syset Nodes");
+createSynsetNodes <- function(graph,posList, verbose=TRUE){
+  if(verbose){print("Creating Syset Nodes");}
   addIndex(graph, "Synset","synsetOffset");
-  invisible(lapply(posList, createPOSSpecificSynsetNodes, graph));
+  invisible(lapply(posList, createPOSSpecificSynsetNodes, graph, verbose));
 }
 
 createWords <- function(graph, posList){
@@ -250,8 +253,8 @@ translateSynsetPointerSymbol <- function(symbol, pos){
   else if(symbol=="$"){"Verb Group"}
 }
 
-readVerbData <- function(path="~/Downloads/WordNet-3.0/dict/"){
-  print("Reading verb data");
+readVerbData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+  if(verbose){print("Reading verb data");}
   path<-paste(path,"data.verb",sep="")
   verbData<-readPosDataFile(path);
   #For verbs, need special step to remove frame from end of pointers
@@ -265,26 +268,26 @@ removeFramesFromPointers<-function(verbData){
   return(verbData);
 }
 
-readAdvData <- function(path="~/Downloads/WordNet-3.0/dict/"){
-  print("Reading adverb data");
+readAdvData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+  if(verbose){print("Reading adverb data");}
   path<-paste(path,"data.adv",sep="")
   readPosDataFile(path);
 }
 
-readNounData <- function(path="~/Downloads/WordNet-3.0/dict/"){
-  print("Reading noun data");
+readNounData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+  if(verbose){print("Reading noun data");}
   path<-paste(path,"data.noun",sep="")
   readPosDataFile(path);
 }
 
-readAdjData <- function(path="~/Downloads/WordNet-3.0/dict/"){
-  print("Reading adjective data");
+readAdjData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+  if(verbose){print("Reading adjective data");}
   path<-paste(path,"data.adj",sep="")
   readPosDataFile(path);
 }
 
-createPOSSpecificSynsetNodes <- function(synsetData, graph){
-  print(paste("Creating ",synsetData[1,5]," synsets",sep=""));
+createPOSSpecificSynsetNodes <- function(synsetData, graph, verbose=TRUE){
+  if(verbose){print(paste("Creating ",synsetData[1,5]," synsets",sep=""))}
   bulkGraphUpdate(graph, synsetData, createSingleSynsetNode);
 }
 
@@ -311,19 +314,4 @@ createSingleSynsetNode  <- function(transaction, data){
   );
 }
 
-getDataFileHeader <- function(){
-  examplePath <- "~/Downloads/WordNet-3.0/dict/data.adv";
-  exampleData <- readLines(examplePath);
-  exampleData[1:29];
-}
-
-createTestDataFile <- function(testData, fileName){
-  header <- getDataFileHeader();
-  body <- testData[,c("synsetOffset","lexFilenum","pos","wCnt","words","pCnt","pointers","frames","gloss")];
-  body$wCnt <- str_pad(body$wCnt,2,"left", "0");
-  body$pCnt <- str_pad(body$pCnt,3,"left", "0");
-  body$gloss <- paste("| ", body$gloss, sep="");
-  #body$frames <- paste(body$frames, "|", sep="");
-  write.table(header, file=fileName, col.names = FALSE, row.names = FALSE, quote=FALSE);
-  write.table(body, append=TRUE, na = "", file=fileName, col.names = FALSE, row.names = FALSE, quote=FALSE);
-}
+createWordNodes <- function(){}
