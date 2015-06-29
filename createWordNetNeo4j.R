@@ -62,15 +62,15 @@ readPOSdata <- function(folderPath="~/Downloads/WordNet-3.0/dict/", verbose=TRUE
 }
 
 createSynsetNodes <- function(graph,posList, verbose=TRUE){
-  if(verbose){print("Creating Syset Nodes");}
+  if(verbose){print("Creating Synset Nodes");}
   addIndex(graph, "Synset","synsetOffset");
   invisible(lapply(posList, createPOSSpecificSynsetNodes, graph, verbose));
 }
 
-createWords <- function(graph, posList){
-  print("Creating Words");
+createWordNodes <- function(graph, posList, verbose=TRUE){
+  if(verbose){print("Creating Word Nodes");}
   addIndex(graph, "Word", "name");
-  invisible(lapply(posList, createWordNodes, graph));
+  invisible(lapply(posList, createPOSSpecificWordNodes, graph));
 }
 
 #-----------Lower-Level Functions----------
@@ -311,16 +311,37 @@ createSingleSynsetNode  <- function(transaction, data){
   );
 }
 
-createWordNodes <- function(synsetData, graph, verbose=TRUE){
+createPOSSpecificWordNodes <- function(synsetData, graph, verbose=TRUE){
   if(verbose){print(paste("Creating ",synsetData[1,5]," words",sep=""))}
-  #Make a list where each element has the name = synsetOffset and value = a list of words
-  wordList <- getWordList(synsetData);
-  
-  #Do something to create nodes off of the wordList
+  #Make a data frame to map relationships between synset offsets and words
+  wordFrame <- getWordFrame(synsetData);
+
+  bulkGraphUpdate(graph, wordFrame, createSingleWordNode);
+  bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
 }
 
-getWordList <- function(synsetData){
-  c<-lapply(synsetData$words, function(x){str_replace_all(str_to_lower(str_match_all(x, "(\\w+) \\d")[[1]][,2]),"_"," ")});
-  names(c)<-synsetData$synsetOffset
-  return(c);
+#Create word frame
+getWordFrame <- function(synsetData){
+  z<-apply(v, 1, transformSynsetDataToWordMap)
+  ldply(z)
+}
+
+#process single line of synset data (inside apply) to create a narrow data frame with the offset and words
+transformSynsetDataToWordMap <- function(synsetLine){
+  offset<-synsetLine["synsetOffset"];
+  words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\w+) \\d")[[1]][,2]),"_"," ");
+  data.frame(synsetOffset=offset, name=words, stringsAsFactors=FALSE, row.names=NULL);
+}
+
+createSingleWordNode <- function(transaction, data){
+  #print(data$name);
+  query <- "MERGE (:Word {name:{name}})";  
+  appendCypher(transaction, query, name = data$name);
+}
+
+createSingleSynsetWordRelationship <- function(transaction, data){
+  #print(data$name);
+  query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}}), (b:Word {name:{name}})
+            MERGE (a)-[:has_word]->(b)";  
+  appendCypher(transaction, query, synsetOffset = data$synsetOffset, name = data$name);
 }

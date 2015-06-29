@@ -21,7 +21,8 @@ runIntegrationTests <-function(dataPath="./testData/"){
   createSynsetNodes(graph, testData, verbose=FALSE);
   unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),130);
   
-  #Create word notes
+  #Create word nodes
+  createWordNodes(graph, testData, verbose=FALSE);
   unitTest("Word node count", countNodesbyLabel(graph, "Word"),223);
 }
 
