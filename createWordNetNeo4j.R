@@ -39,7 +39,7 @@ library(plyr);
 source('genericGraphFunctions.R');
 source('testFunctions.R');
 
-runIntegrationTests();
+#runIntegrationTests();
 
 # Create nodes representing the 45 lexicographer files described at
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
@@ -311,4 +311,16 @@ createSingleSynsetNode  <- function(transaction, data){
   );
 }
 
-createWordNodes <- function(){}
+createWordNodes <- function(synsetData, graph, verbose=TRUE){
+  if(verbose){print(paste("Creating ",synsetData[1,5]," words",sep=""))}
+  #Make a list where each element has the name = synsetOffset and value = a list of words
+  wordList <- getWordList(synsetData);
+  
+  #Do something to create nodes off of the wordList
+}
+
+getWordList <- function(synsetData){
+  c<-lapply(synsetData$words, function(x){str_replace_all(str_to_lower(str_match_all(x, "(\\w+) \\d")[[1]][,2]),"_"," ")});
+  names(c)<-synsetData$synsetOffset
+  return(c);
+}
