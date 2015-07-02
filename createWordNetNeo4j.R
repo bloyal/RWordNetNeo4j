@@ -106,7 +106,7 @@ getLexDescriptions <- function(path="lexFileLookup.csv"){
 # }
 
 createSingleLexNode  <- function(transaction, data){
-  query <- "CREATE (:LexName {
+  query <- "MERGE (:LexName {
                       fileNumber:{fileNumber},
                       fileName:{fileName},
                       synCat:{synCat},
@@ -285,7 +285,8 @@ createPOSSpecificSynsetNodes <- function(synsetData, graph, verbose=TRUE){
 }
 
 createSingleSynsetNode  <- function(transaction, data){
-  query <- "CREATE (:Synset {
+  #print(data[c("synsetOffset","lexFilenum","lexFileName","pos","posName","wCnt","pCnt","gloss")]);
+  query <- "MERGE (:Synset {
                       synsetOffset:{synsetOffset},
                       lexFilenum:{lexFilenum},
                       lexFileName:{lexFileName},

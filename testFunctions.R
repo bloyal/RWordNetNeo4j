@@ -17,9 +17,9 @@ runIntegrationTests <-function(dataPath="./testData/"){
   createLexNodes(graph, verbose=FALSE);
   unitTest("Lexicographer node count", countNodesbyLabel(graph, "LexName"),45);
   
-  #Create syset nodes
-  createSynsetNodes(graph, testData, verbose=FALSE);
-  unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),130);
+  #Create synset nodes
+  createSynsetNodes(graph, testData, verbose=TRUE);
+  unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),128);
   
   #Create word nodes
   createWordNodes(graph, testData, verbose=FALSE);
