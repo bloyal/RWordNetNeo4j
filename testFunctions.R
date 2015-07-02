@@ -5,9 +5,9 @@
 runIntegrationTests <-function(dataPath="./testData/"){
   #Load in POS test data
   testData<-readPOSdata(dataPath, verbose=FALSE);
-  unitTest("Noun data count", nrow(testData$noun),27);
-  unitTest("Verb data count", nrow(testData$verb),26);
-  unitTest("Adjective data count", nrow(testData$adj),52);
+  unitTest("Noun data count", nrow(testData$noun),26);
+  unitTest("Verb data count", nrow(testData$verb),25);
+  unitTest("Adjective data count", nrow(testData$adj),50);
   unitTest("Adverb data count", nrow(testData$adv),25);
   
   #Initiate graph
@@ -18,8 +18,8 @@ runIntegrationTests <-function(dataPath="./testData/"){
   unitTest("Lexicographer node count", countNodesbyLabel(graph, "LexName"),45);
   
   #Create synset nodes
-  createSynsetNodes(graph, testData, verbose=TRUE);
-  unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),128);
+  createSynsetNodes(graph, testData, verbose=FALSE);
+  unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),126);
   
   #Create word nodes
   createWordNodes(graph, testData, verbose=FALSE);
