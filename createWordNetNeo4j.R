@@ -66,7 +66,7 @@ createSynsetNodes <- function(graph,posList, verbose=TRUE){
 createWordNodes <- function(graph, posList, verbose=TRUE){
   if(verbose){print("Creating Word Nodes");}
   addIndex(graph, "Word", "name");
-  invisible(lapply(posList, createPOSSpecificWordNodes, graph));
+  invisible(lapply(posList, createPOSSpecificWordNodes, graph, verbose));
 }
 
 #-----------Lower-Level Functions----------
@@ -311,21 +311,23 @@ createPOSSpecificWordNodes <- function(synsetData, graph, verbose=TRUE){
   if(verbose){print(paste("Creating ",synsetData[1,5]," words",sep=""))}
   #Make a data frame to map relationships between synset offsets and words
   wordFrame <- getWordFrame(synsetData);
-
+  #print(wordFrame);
   bulkGraphUpdate(graph, wordFrame, createSingleWordNode);
   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
 }
 
 #Create word frame
 getWordFrame <- function(synsetData){
-  z<-apply(v, 1, transformSynsetDataToWordMap)
+  z<-apply(synsetData, 1, transformSynsetDataToWordMap)
   ldply(z)
 }
 
 #process single line of synset data (inside apply) to create a narrow data frame with the offset and words
 transformSynsetDataToWordMap <- function(synsetLine){
+  #print(synsetLine["words"]);
   offset<-synsetLine["synsetOffset"];
-  words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\w+) \\d")[[1]][,2]),"_"," ");
+  words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]),"_"," ");
+  #print(words);
   data.frame(synsetOffset=offset, name=words, stringsAsFactors=FALSE, row.names=NULL);
 }
 

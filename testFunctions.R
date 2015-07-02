@@ -23,7 +23,7 @@ runIntegrationTests <-function(dataPath="./testData/"){
   
   #Create word nodes
   createWordNodes(graph, testData, verbose=FALSE);
-  unitTest("Word node count", countNodesbyLabel(graph, "Word"),223);
+  unitTest("Word node count", countNodesbyLabel(graph, "Word"),202);
 }
 
 unitTest <- function(testName, actualValue, expectedValue){
