@@ -70,7 +70,8 @@ createWordNodes <- function(graph, posList, verbose=TRUE){
 }
 
 createSynsetRelationships <- function(graph, posList, verbose=TRUE){
-  
+  if(verbose){print("Creating Synset-Synset Relationships");}
+  invisible(lapply(posList, createSynsetSynsetRelationships, graph, verbose));
 }
 
 #-----------Lower-Level Functions----------
@@ -347,4 +348,28 @@ createSingleSynsetWordRelationship <- function(transaction, data){
   query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}}), (b:Word {name:{name}})
             MERGE (a)-[:has_word]->(b)";  
   appendCypher(transaction, query, synsetOffset = data$synsetOffset, name = data$name);
+}
+
+createSynsetSynsetRelationships <- function(synsetData, graph, verbose=TRUE){
+  print("Creating SS rels");
+  synsetRelFrame <- getSynsetRelFrame(synsetData);
+}
+
+getSynsetRelFrame <- function(synsetData){
+  #convert Synset data into a data frame with x columns: 
+  #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
+  z<-apply(synsetData, 1, transformSynsetDataToSynRelMap)
+  ldply(z)
+}
+
+#process single line of synset data (inside apply) to create a narrow data frame with x columns: 
+#start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
+transformSynsetDataToSynRelMap <- function(synsetLine){
+  print(synsetLine["pointers"]);
+  startOffset<-synsetLine["synsetOffset"];
+  startPOS<-synsetLine["pos"];
+  str_match_all(synsetLine["pointers"], "(\\S) (\\d{8}) ([nvasr]) (\\d{2})(\\d{2})");
+  #words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]),"_"," ");
+  #print(words);
+  data.frame(startOffset=startOffset, startPOS=startPOS, stringsAsFactors=FALSE, row.names=NULL);
 }
