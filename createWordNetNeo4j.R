@@ -69,6 +69,10 @@ createWordNodes <- function(graph, posList, verbose=TRUE){
   invisible(lapply(posList, createPOSSpecificWordNodes, graph, verbose));
 }
 
+createSynsetRelationships <- function(graph, posList, verbose=TRUE){
+  
+}
+
 #-----------Lower-Level Functions----------
 
 getLexNames <- function(dictPath){

@@ -48,3 +48,9 @@ newGraph <- function(url="http://localhost:7474/db/data/", username="neo4j", pas
   clear(graph, input=FALSE);
   return(graph);
 }
+
+countRelationshipsByLabel <- function(graph, label){
+  query <- paste("MATCH (a)-[r]->(b) WHERE type(r)='",label,"' RETURN r", sep="");
+  nodes <- getRels(graph, query);
+  return(length(nodes));
+}
