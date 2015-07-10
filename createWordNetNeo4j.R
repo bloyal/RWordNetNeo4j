@@ -334,7 +334,8 @@ transformSynsetDataToWordMap <- function(synsetLine){
   offset<-synsetLine["synsetOffset"];
   words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]),"_"," ");
   #print(words);
-  data.frame(synsetOffset=offset, name=words, stringsAsFactors=FALSE, row.names=NULL);
+  df<-data.frame(synsetOffset=offset, name=words, stringsAsFactors=FALSE, row.names=NULL);
+  cbind(df,wordNum=as.numeric(rownames(df)));
 }
 
 createSingleWordNode <- function(transaction, data){
@@ -346,13 +347,13 @@ createSingleWordNode <- function(transaction, data){
 createSingleSynsetWordRelationship <- function(transaction, data){
   #print(data$name);
   query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}}), (b:Word {name:{name}})
-            MERGE (a)-[:has_word]->(b)";  
-  appendCypher(transaction, query, synsetOffset = data$synsetOffset, name = data$name);
+            MERGE (a)-[:has_word {wordNum:{wordNum}}]->(b)";  
+  appendCypher(transaction, query, synsetOffset = data$synsetOffset, name = data$name, wordNum = data$wordNum);
 }
 
 createSynsetSynsetRelationships <- function(synsetData, graph, verbose=TRUE){
   print("Creating SS rels");
-  synsetRelFrame <- getSynsetRelFrame(synsetData);
+  #synsetRelFrame <- getSynsetRelFrame(synsetData);
 }
 
 getSynsetRelFrame <- function(synsetData){
