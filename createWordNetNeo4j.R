@@ -290,7 +290,7 @@ createPOSSpecificSynsetNodes <- function(synsetData, graph, verbose=TRUE){
 }
 
 createSingleSynsetNode  <- function(transaction, data){
-  #print(data[c("synsetOffset","lexFilenum","lexFileName","pos","posName","wCnt","pCnt","gloss")]);
+  #print(data[c("synsetOffset","lexFilenum","lexFileName","pos","posName","wCnt","pCnt","gloss", "words")]);
   query <- "MERGE (:Synset {
                       synsetOffset:{synsetOffset},
                       lexFilenum:{lexFilenum},
@@ -299,7 +299,8 @@ createSingleSynsetNode  <- function(transaction, data){
                       posName:{posName},
                       wCnt:{wCnt},
                       pCnt:{pCnt},
-                      gloss:{gloss}
+                      gloss:{gloss},
+                      words:{words}
                     })";  
   appendCypher(transaction, query, 
                synsetOffset = data$synsetOffset,
@@ -309,7 +310,8 @@ createSingleSynsetNode  <- function(transaction, data){
                posName = data$posName,
                wCnt = data$wCnt,
                pCnt = data$pCnt,
-               gloss = data$gloss
+               gloss = data$gloss,
+               words = data$words
   );
 }
 
@@ -332,9 +334,10 @@ getWordFrame <- function(synsetData){
 transformSynsetDataToWordMap <- function(synsetLine){
   #print(synsetLine["words"]);
   offset<-synsetLine["synsetOffset"];
+  pos<-synsetLine["pos"];
   words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]),"_"," ");
   #print(words);
-  df<-data.frame(synsetOffset=offset, name=words, stringsAsFactors=FALSE, row.names=NULL);
+  df<-data.frame(synsetOffset=offset, pos=pos, name=words, stringsAsFactors=FALSE, row.names=NULL);
   cbind(df,wordNum=as.numeric(rownames(df)));
 }
 
@@ -345,10 +348,10 @@ createSingleWordNode <- function(transaction, data){
 }
 
 createSingleSynsetWordRelationship <- function(transaction, data){
-  #print(data$name);
-  query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}}), (b:Word {name:{name}})
+  #print(data$pos);
+  query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}, pos:{pos}}), (b:Word {name:{name}})
             MERGE (a)-[:has_word {wordNum:{wordNum}}]->(b)";  
-  appendCypher(transaction, query, synsetOffset = data$synsetOffset, name = data$name, wordNum = data$wordNum);
+  appendCypher(transaction, query, synsetOffset = data$synsetOffset, pos = data$pos, name = data$name, wordNum = data$wordNum);
 }
 
 createSynsetSynsetRelationships <- function(synsetData, graph, verbose=TRUE){
