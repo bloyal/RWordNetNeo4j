@@ -27,7 +27,7 @@ runIntegrationTests <-function(dataPath="./testData/"){
   
   #Create synset-synset relationships
   createSynsetRelationships(graph, testData, verbose=FALSE);
-  unitTest("Synset-Synset relationship count",countRelationshipsByLabel(graph,"SynsetRel"),1);
+  unitTest("Synset-Synset relationship count",countRelationshipsByLabel(graph,"has_synset_relationship"),126);
 }
 
 unitTest <- function(testName, actualValue, expectedValue){

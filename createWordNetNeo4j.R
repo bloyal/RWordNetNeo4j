@@ -352,8 +352,9 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 }
 
 createSynsetSynsetRelationships <- function(synsetData, graph, verbose=TRUE){
-  print("Creating SS rels");
-  #synsetRelFrame <- getSynsetRelFrame(synsetData);
+  #print("Creating SS rels");
+  synsetRelFrame <- getSynsetRelFrame(synsetData);
+  bulkGraphUpdate(graph, synsetRelFrame, createSingleSynsetSynsetRelationship);
 }
 
 getSynsetRelFrame <- function(synsetData){
@@ -366,11 +367,20 @@ getSynsetRelFrame <- function(synsetData){
 #process single line of synset data (inside apply) to create a narrow data frame with x columns: 
 #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
 transformSynsetDataToSynRelMap <- function(synsetLine){
-  print(synsetLine["pointers"]);
   startOffset<-synsetLine["synsetOffset"];
   startPOS<-synsetLine["pos"];
-  str_match_all(synsetLine["pointers"], "(\\S) (\\d{8}) ([nvasr]) (\\d{2})(\\d{2})");
-  #words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]),"_"," ");
-  #print(words);
-  data.frame(startOffset=startOffset, startPOS=startPOS, stringsAsFactors=FALSE, row.names=NULL);
+  pointers<-str_match_all(synsetLine["pointers"], "(\\S) (\\d{8}) ([nvasr]) (\\d{2})(\\d{2})")[[1]];
+  data.frame(startOffset=startOffset, startPOS=startPOS, 
+             relTypeCode=pointers[,2], endOffset=pointers[,3], endPOS=pointers[,4],
+             startWordNum=pointers[,5], endWordNum=pointers[,6],
+             stringsAsFactors=FALSE, row.names=NULL);
+}
+
+createSingleSynsetSynsetRelationship <- function(transaction, data){
+  #print(data);
+  query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
+            MERGE (a)-[:has_synset_relationship {typeCode:{typeCode}}]->(b)";  
+  appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
+               endOffset = data$endOffset, endPOS = data$startPOS,
+               typeCode = data$relTypeCode);
 }
