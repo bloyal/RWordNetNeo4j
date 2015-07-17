@@ -335,7 +335,8 @@ transformSynsetDataToWordMap <- function(synsetLine){
   #print(synsetLine["words"]);
   offset<-synsetLine["synsetOffset"];
   pos<-synsetLine["pos"];
-  words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]),"_"," ");
+  #words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]),"_"," ");
+  words<-str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]);
   #print(words);
   df<-data.frame(synsetOffset=offset, pos=pos, name=words, stringsAsFactors=FALSE, row.names=NULL);
   cbind(df,wordNum=as.numeric(rownames(df)));
@@ -361,8 +362,11 @@ createSynsetSynsetPointers <- function(synsetData, graph, verbose=TRUE){
   #create semantic pointer relationships (i.e. between two synsets) 
   bulkGraphUpdate(graph, synsetPointerFrame[synsetPointerFrame$startWordNum=="00",], createSingleSemanticPointer);
   
-  #create lexical pointer relationships (i.e. between two words)
-  #bulkGraphUpdate(graph, synsetPointerFrame[synsetPointerFrame$startWordNum!="00",], createSingleLexicalPointer);
+  #remove semantic pointers from frame and add columns for start and end words
+  #synsetPointerFrame <- getLexicalPointerWords(graph, synsetPointerFrame);
+  
+  #add lexical pointer relationships 
+  #bulkGraphUpdate(graph, synsetPointerFrame, createSingleLexicalPointer);
 }
 
 getSynsetPointerFrame <- function(synsetData){
@@ -393,7 +397,68 @@ createSingleSemanticPointer <- function(transaction, data){
                pointerSymbol = data$pointerSymbol);
 }
 
+getLexicalPointerWords <- function(graph, pointerFrame){
+  #remove semantic pointer rows
+  pointerFrame<-pointerFrame[pointerFrame$startWordNum!="00",];
+  
+  #Add empty columns for start and end words
+  pointerFrame<-cbind(pointerFrame, startWord = rep("",nrow(pointerFrame)), endWord = rep("",nrow(pointerFrame)));
+  
+  #iterate through lexical pointers, pull out start/end words and add to data frame
+  #NOTE: This is probably going to be really slow. Should try to refactor at some point
+  for (i in 1:nrow(pointerFrame)){
+    #print(pointerFrame[i,"endOffset"]);
+    #line <- pointerFrame[i,];
+    words <- searchForLexicalWords(graph, pointerFrame[i,]);
+    if(!is.null(words$endWords)){
+      #print(words$startWords);
+      startWords<-strsplit(words$startWords,"\\s")[[1]];
+      #print(startWords);
+      startWordNum <- ceiling((as.numeric(pointerFrame[i,"startWordNum"])) / 2);
+      #print(startWordNum);
+      pointerFrame[i,"startWord"] <- startWords[startWordNum];
+      
+      #print(words$endWords);
+      endWords<-strsplit(words$endWords,"\\s")[[1]];
+      #print(endWords);
+      endWordNum <- ceiling((as.numeric(pointerFrame[i,"endWordNum"])) / 2);
+      #print(endWordNum);
+      pointerFrame[i,"endWord"] <- endWords[endWordNum];
+      
+    }
+  }
+  
+  #z<- apply(pointerFrame, 1, searchForLexicalWords, graph)
+  #ldply(z);
+  return(pointerFrame);
+}
+
+searchForLexicalWords <- function(graph, pointerLine){
+#   startOffset<-pointerLine[["startOffset"]];
+#   startPOS<-pointerLine[["startPOS"]];
+#   endOffset<-pointerLine[["endOffset"]];
+#   endPOS<-pointerLine[["endPOS"]];
+  
+  startOffset<-pointerLine$startOffset;
+  startPOS<-pointerLine$startPOS;
+  endOffset<-pointerLine$endOffset;
+  endPOS<-pointerLine$endPOS;
+  
+  
+  #print(paste(startOffset, endOffset));
+  
+  query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}})
+            WITH a.words as startWords
+            MATCH (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
+            RETURN startWords, b.words as endWords"
+  results <- cypher(graph, query, startOffset = startOffset, startPOS = startPOS, 
+                    endOffset = endOffset, endPOS = endPOS);
+  #results <- cbind(results, startOffset = startOffset, startPOS = startPOS, endOffset = endOffset, endPOS = endPOS)
+  #print(results);
+}
+
 createSingleLexicalPointer <- function(transaction, data){
+  #Start here!
   #print(data);
   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
             MERGE (a)-[:has_pointer {relationType:'Semantic', pointerSymbol:{pointerSymbol}}]->(b)";  

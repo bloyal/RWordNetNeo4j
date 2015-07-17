@@ -23,7 +23,7 @@ runIntegrationTests <-function(dataPath="./testData/"){
   
   #Create word nodes
   createWordNodes(graph, testData, verbose=FALSE);
-  unitTest("Word node count", countNodesbyLabel(graph, "Word"),202);
+  unitTest("Word node count", countNodesbyLabel(graph, "Word"),204);
   unitTest("Synset-Word relationship count",countRelationshipsByLabel(graph,"has_word"),218);
     
   #Create Synset pointer relationships
