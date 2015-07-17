@@ -357,7 +357,12 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 createSynsetSynsetPointers <- function(synsetData, graph, verbose=TRUE){
   #print("Creating SS rels");
   synsetPointerFrame <- getSynsetPointerFrame(synsetData);
-  bulkGraphUpdate(graph, synsetPointerFrame, createSingleSynsetSynsetPointer);
+  
+  #create semantic pointer relationships (i.e. between two synsets) 
+  bulkGraphUpdate(graph, synsetPointerFrame[synsetPointerFrame$startWordNum=="00",], createSingleSemanticPointer);
+  
+  #create lexical pointer relationships (i.e. between two words)
+  #bulkGraphUpdate(graph, synsetPointerFrame[synsetPointerFrame$startWordNum!="00",], createSingleLexicalPointer);
 }
 
 getSynsetPointerFrame <- function(synsetData){
@@ -374,16 +379,25 @@ transformSynsetDataToSynPointerMap <- function(synsetLine){
   startPOS<-synsetLine["pos"];
   pointers<-str_match_all(synsetLine["pointers"], "(\\S) (\\d{8}) ([nvasr]) (\\d{2})(\\d{2})")[[1]];
   data.frame(startOffset=startOffset, startPOS=startPOS, 
-             relTypeCode=pointers[,2], endOffset=pointers[,3], endPOS=pointers[,4],
+             pointerSymbol=pointers[,2], endOffset=pointers[,3], endPOS=pointers[,4],
              startWordNum=pointers[,5], endWordNum=pointers[,6],
              stringsAsFactors=FALSE, row.names=NULL);
 }
 
-createSingleSynsetSynsetPointer <- function(transaction, data){
+createSingleSemanticPointer <- function(transaction, data){
   #print(data);
   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
-            MERGE (a)-[:has_synset_pointer {typeCode:{typeCode}}]->(b)";  
+            MERGE (a)-[:has_pointer {relationType:'Semantic', pointerSymbol:{pointerSymbol}}]->(b)";  
   appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
                endOffset = data$endOffset, endPOS = data$startPOS,
-               typeCode = data$relTypeCode);
+               pointerSymbol = data$pointerSymbol);
+}
+
+createSingleLexicalPointer <- function(transaction, data){
+  #print(data);
+  query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
+            MERGE (a)-[:has_pointer {relationType:'Semantic', pointerSymbol:{pointerSymbol}}]->(b)";  
+  appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
+               endOffset = data$endOffset, endPOS = data$startPOS,
+               pointerSymbol = data$pointerSymbol);
 }
