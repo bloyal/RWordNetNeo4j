@@ -69,9 +69,9 @@ createWordNodes <- function(graph, posList, verbose=TRUE){
   invisible(lapply(posList, createPOSSpecificWordNodes, graph, verbose));
 }
 
-createSynsetRelationships <- function(graph, posList, verbose=TRUE){
-  if(verbose){print("Creating Synset-Synset Relationships");}
-  invisible(lapply(posList, createSynsetSynsetRelationships, graph, verbose));
+createSynsetPointers <- function(graph, posList, verbose=TRUE){
+  if(verbose){print("Creating Synset-Synset Pointers");}
+  invisible(lapply(posList, createSynsetSynsetPointers, graph, verbose));
 }
 
 #-----------Lower-Level Functions----------
@@ -354,22 +354,22 @@ createSingleSynsetWordRelationship <- function(transaction, data){
   appendCypher(transaction, query, synsetOffset = data$synsetOffset, pos = data$pos, name = data$name, wordNum = data$wordNum);
 }
 
-createSynsetSynsetRelationships <- function(synsetData, graph, verbose=TRUE){
+createSynsetSynsetPointers <- function(synsetData, graph, verbose=TRUE){
   #print("Creating SS rels");
-  synsetRelFrame <- getSynsetRelFrame(synsetData);
-  bulkGraphUpdate(graph, synsetRelFrame, createSingleSynsetSynsetRelationship);
+  synsetPointerFrame <- getSynsetPointerFrame(synsetData);
+  bulkGraphUpdate(graph, synsetPointerFrame, createSingleSynsetSynsetPointer);
 }
 
-getSynsetRelFrame <- function(synsetData){
+getSynsetPointerFrame <- function(synsetData){
   #convert Synset data into a data frame with x columns: 
   #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
-  z<-apply(synsetData, 1, transformSynsetDataToSynRelMap)
+  z<-apply(synsetData, 1, transformSynsetDataToSynPointerMap)
   ldply(z)
 }
 
 #process single line of synset data (inside apply) to create a narrow data frame with x columns: 
 #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
-transformSynsetDataToSynRelMap <- function(synsetLine){
+transformSynsetDataToSynPointerMap <- function(synsetLine){
   startOffset<-synsetLine["synsetOffset"];
   startPOS<-synsetLine["pos"];
   pointers<-str_match_all(synsetLine["pointers"], "(\\S) (\\d{8}) ([nvasr]) (\\d{2})(\\d{2})")[[1]];
@@ -379,10 +379,10 @@ transformSynsetDataToSynRelMap <- function(synsetLine){
              stringsAsFactors=FALSE, row.names=NULL);
 }
 
-createSingleSynsetSynsetRelationship <- function(transaction, data){
+createSingleSynsetSynsetPointer <- function(transaction, data){
   #print(data);
   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
-            MERGE (a)-[:has_synset_relationship {typeCode:{typeCode}}]->(b)";  
+            MERGE (a)-[:has_synset_pointer {typeCode:{typeCode}}]->(b)";  
   appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
                endOffset = data$endOffset, endPOS = data$startPOS,
                typeCode = data$relTypeCode);
