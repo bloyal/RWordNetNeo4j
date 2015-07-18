@@ -70,8 +70,8 @@ createWordNodes <- function(graph, posList, verbose=TRUE){
 }
 
 createSynsetPointers <- function(graph, posList, verbose=TRUE){
-  if(verbose){print("Creating Synset-Synset Pointers");}
-  invisible(lapply(posList, createSynsetSynsetPointers, graph, verbose));
+  if(verbose){print("Creating Synset Pointers");}
+  invisible(lapply(posList, createSemanticAndLexicalPointers, graph, verbose));
 }
 
 #-----------Lower-Level Functions----------
@@ -225,6 +225,7 @@ translateSynsetPointerSymbol <- function(symbol, pos){
            Adjective = "Pertainym (Pertains to Noun)",
            Adverb = "Derived from Adjective")
   }
+  else if(symbol=="!"){"Antonym"}
   else if(symbol=="~"){"Hyponym"}
   else if(symbol=="~i"){"Instance Hyponym"}
   else if(symbol=="-c"){"Member of this Domain - TOPIC"}
@@ -257,7 +258,6 @@ readVerbData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
   verbData<-readPosDataFile(path);
   #For verbs, need special step to remove frame from end of pointers
   #Also need to remove space from front of frames!
-  #verbData$frames <- 
   removeFramesFromPointers(verbData);
 }
 
@@ -355,24 +355,25 @@ createSingleSynsetWordRelationship <- function(transaction, data){
   appendCypher(transaction, query, synsetOffset = data$synsetOffset, pos = data$pos, name = data$name, wordNum = data$wordNum);
 }
 
-createSynsetSynsetPointers <- function(synsetData, graph, verbose=TRUE){
+createSemanticAndLexicalPointers <- function(synsetData, graph, verbose=TRUE){
+  if(verbose){print(paste("Creating ",synsetData[1,5]," synset pointers",sep=""))}
+  
   #print("Creating SS rels");
   synsetPointerFrame <- getSynsetPointerFrame(synsetData);
-  
   #create semantic pointer relationships (i.e. between two synsets) 
   bulkGraphUpdate(graph, synsetPointerFrame[synsetPointerFrame$startWordNum=="00",], createSingleSemanticPointer);
   
   #remove semantic pointers from frame and add columns for start and end words
-  #synsetPointerFrame <- getLexicalPointerWords(graph, synsetPointerFrame);
+  synsetPointerFrame <- getLexicalPointerWords(graph, synsetPointerFrame[synsetPointerFrame$startWordNum!="00",]);
   
   #add lexical pointer relationships 
-  #bulkGraphUpdate(graph, synsetPointerFrame, createSingleLexicalPointer);
+  bulkGraphUpdate(graph, synsetPointerFrame, createSingleLexicalPointer);
 }
 
 getSynsetPointerFrame <- function(synsetData){
   #convert Synset data into a data frame with x columns: 
   #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
-  z<-apply(synsetData, 1, transformSynsetDataToSynPointerMap)
+  z<-apply(synsetData[!is.na(synsetData$pointers),], 1, transformSynsetDataToSynPointerMap)
   ldply(z)
 }
 
@@ -389,7 +390,6 @@ transformSynsetDataToSynPointerMap <- function(synsetLine){
 }
 
 createSingleSemanticPointer <- function(transaction, data){
-  #print(data);
   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
             MERGE (a)-[:has_pointer {relationType:'Semantic', pointerSymbol:{pointerSymbol}}]->(b)";  
   appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
@@ -399,70 +399,45 @@ createSingleSemanticPointer <- function(transaction, data){
 
 getLexicalPointerWords <- function(graph, pointerFrame){
   #remove semantic pointer rows
-  pointerFrame<-pointerFrame[pointerFrame$startWordNum!="00",];
+  #pointerFrame<-pointerFrame[pointerFrame$startWordNum!="00",];
   
   #Add empty columns for start and end words
-  pointerFrame<-cbind(pointerFrame, startWord = rep("",nrow(pointerFrame)), endWord = rep("",nrow(pointerFrame)));
+  pointerFrame<-cbind(pointerFrame, startWord = rep("",nrow(pointerFrame)), endWord = rep("",nrow(pointerFrame)), stringsAsFactors=FALSE);
   
   #iterate through lexical pointers, pull out start/end words and add to data frame
   #NOTE: This is probably going to be really slow. Should try to refactor at some point
   for (i in 1:nrow(pointerFrame)){
-    #print(pointerFrame[i,"endOffset"]);
-    #line <- pointerFrame[i,];
     words <- searchForLexicalWords(graph, pointerFrame[i,]);
     if(!is.null(words$endWords)){
-      #print(words$startWords);
       startWords<-strsplit(words$startWords,"\\s")[[1]];
-      #print(startWords);
       startWordNum <- ceiling((as.numeric(pointerFrame[i,"startWordNum"])) / 2);
-      #print(startWordNum);
       pointerFrame[i,"startWord"] <- startWords[startWordNum];
       
-      #print(words$endWords);
       endWords<-strsplit(words$endWords,"\\s")[[1]];
-      #print(endWords);
       endWordNum <- ceiling((as.numeric(pointerFrame[i,"endWordNum"])) / 2);
-      #print(endWordNum);
       pointerFrame[i,"endWord"] <- endWords[endWordNum];
-      
     }
   }
-  
-  #z<- apply(pointerFrame, 1, searchForLexicalWords, graph)
-  #ldply(z);
   return(pointerFrame);
 }
 
 searchForLexicalWords <- function(graph, pointerLine){
-#   startOffset<-pointerLine[["startOffset"]];
-#   startPOS<-pointerLine[["startPOS"]];
-#   endOffset<-pointerLine[["endOffset"]];
-#   endPOS<-pointerLine[["endPOS"]];
-  
+
   startOffset<-pointerLine$startOffset;
   startPOS<-pointerLine$startPOS;
   endOffset<-pointerLine$endOffset;
   endPOS<-pointerLine$endPOS;
   
-  
-  #print(paste(startOffset, endOffset));
-  
-  query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}})
-            WITH a.words as startWords
-            MATCH (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
-            RETURN startWords, b.words as endWords"
-  results <- cypher(graph, query, startOffset = startOffset, startPOS = startPOS, 
+  query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}),
+            (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
+            RETURN a.words as startWords, b.words as endWords"
+  cypher(graph, query, startOffset = startOffset, startPOS = startPOS, 
                     endOffset = endOffset, endPOS = endPOS);
-  #results <- cbind(results, startOffset = startOffset, startPOS = startPOS, endOffset = endOffset, endPOS = endPOS)
-  #print(results);
 }
 
 createSingleLexicalPointer <- function(transaction, data){
-  #Start here!
-  #print(data);
-  query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
-            MERGE (a)-[:has_pointer {relationType:'Semantic', pointerSymbol:{pointerSymbol}}]->(b)";  
-  appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
-               endOffset = data$endOffset, endPOS = data$startPOS,
+  query <- "MATCH (a:Word {name:{startWord}}), (b:Word {name:{endWord}})
+            MERGE (a)-[:has_pointer {relationType:'Lexical', pointerSymbol:{pointerSymbol}}]->(b)";  
+  appendCypher(transaction, query, startWord = data$startWord, endWord = data$endWord,
                pointerSymbol = data$pointerSymbol);
 }

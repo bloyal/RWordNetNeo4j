@@ -28,7 +28,7 @@ runIntegrationTests <-function(dataPath="./testData/"){
     
   #Create Synset pointer relationships
   createSynsetPointers(graph, testData, verbose=FALSE);
-  unitTest("Synset pointer count",countRelationshipsByLabel(graph,"has_pointer"),126);
+  unitTest("Synset pointer count",countRelationshipsByLabel(graph,"has_pointer"),128);
 }
 
 unitTest <- function(testName, actualValue, expectedValue){
