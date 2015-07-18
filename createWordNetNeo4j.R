@@ -287,6 +287,8 @@ readAdjData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
 createPOSSpecificSynsetNodes <- function(synsetData, graph, verbose=TRUE){
   if(verbose){print(paste("Creating ",synsetData[1,5]," synsets",sep=""))}
   bulkGraphUpdate(graph, synsetData, createSingleSynsetNode);
+  #!--Add lex file relationships here
+  bulkGraphUpdate(graph, synsetData, createSingleSynsetLexRelationship);
 }
 
 createSingleSynsetNode  <- function(transaction, data){
@@ -313,6 +315,14 @@ createSingleSynsetNode  <- function(transaction, data){
                gloss = data$gloss,
                words = data$words
   );
+}
+
+createSingleSynsetLexRelationship <- function(transaction, data){
+  #print(data$lexFilenum);
+  query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}, pos:{pos}}), 
+            (b:LexName {fileNumber:{fileNumber}})
+            MERGE (a)-[:has_lexicographer_file]->(b)";  
+  appendCypher(transaction, query, synsetOffset = data$synsetOffset, pos = data$pos, fileNumber = as.numeric(data$lexFilenum));
 }
 
 createPOSSpecificWordNodes <- function(synsetData, graph, verbose=TRUE){
