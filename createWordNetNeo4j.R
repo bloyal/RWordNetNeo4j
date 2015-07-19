@@ -219,37 +219,42 @@ translateLexFilenum <- function(lexFilenum){
          "44"="participial adjectives");
 }
 
-translateSynsetPointerSymbol <- function(symbol, pos){
-  if(symbol=='\\'){
-    switch(pos,
+translateMultiPointerSymbols <- function(symbolVector, posVector){
+  input <- data.frame(symbol = symbolVector, pos = posVector, stringsAsFactors = FALSE);
+  unlist(apply(input, 1, translateSynsetPointerSymbol));
+}
+
+translateSynsetPointerSymbol <- function(input){
+  if(input["symbol"]=='\\'){
+    switch(input["pos"],
            Adjective = "Pertainym (Pertains to Noun)",
            Adverb = "Derived from Adjective")
   }
-  else if(symbol=="!"){"Antonym"}
-  else if(symbol=="~"){"Hyponym"}
-  else if(symbol=="~i"){"Instance Hyponym"}
-  else if(symbol=="-c"){"Member of this Domain - TOPIC"}
-  else if(symbol=="-r"){"Member of this Domain - REGION"}
-  else if(symbol=="-u"){"Member of this Domain - USAGE"}
-  else if(symbol==";c"){"Domain of Synset - TOPIC"}
-  else if(symbol==";r"){"Domain of Synset - REGION"}
-  else if(symbol==";u"){"Domain of Synset - USAGE"}
-  else if(symbol=="@"){"Hypernym"}
-  else if(symbol=="@i"){"Instance Hypernym"}
-  else if(symbol=="*"){"Entailment"}
-  else if(symbol=="&"){"Similar To"}
-  else if(symbol=="#m"){"Member Holonym"}
-  else if(symbol=="#p"){"Part Holonym"}
-  else if(symbol=="#s"){"Substance Holonym"}
-  else if(symbol=="%m"){"Member Meronym"}
-  else if(symbol=="%p"){"Part Meronym"}
-  else if(symbol=="%s"){"Substance Meronym"}
-  else if(symbol=="^"){"Also See"}
-  else if(symbol=="+"){"Derivationally Related Form"}
-  else if(symbol=="<"){"Participle of Verb"}
-  else if(symbol=="="){"Attribute"}
-  else if(symbol==">"){"Cause"}
-  else if(symbol=="$"){"Verb Group"}
+  else if(input["symbol"]=="!"){"Antonym"}
+  else if(input["symbol"]=="~"){"Hyponym"}
+  else if(input["symbol"]=="~i"){"Instance Hyponym"}
+  else if(input["symbol"]=="-c"){"Member of this Domain - TOPIC"}
+  else if(input["symbol"]=="-r"){"Member of this Domain - REGION"}
+  else if(input["symbol"]=="-u"){"Member of this Domain - USAGE"}
+  else if(input["symbol"]==";c"){"Domain of Synset - TOPIC"}
+  else if(input["symbol"]==";r"){"Domain of Synset - REGION"}
+  else if(input["symbol"]==";u"){"Domain of Synset - USAGE"}
+  else if(input["symbol"]=="@"){"Hypernym"}
+  else if(input["symbol"]=="@i"){"Instance Hypernym"}
+  else if(input["symbol"]=="*"){"Entailment"}
+  else if(input["symbol"]=="&"){"Similar To"}
+  else if(input["symbol"]=="#m"){"Member Holonym"}
+  else if(input["symbol"]=="#p"){"Part Holonym"}
+  else if(input["symbol"]=="#s"){"Substance Holonym"}
+  else if(input["symbol"]=="%m"){"Member Meronym"}
+  else if(input["symbol"]=="%p"){"Part Meronym"}
+  else if(input["symbol"]=="%s"){"Substance Meronym"}
+  else if(input["symbol"]=="^"){"Also See"}
+  else if(input["symbol"]=="+"){"Derivationally Related Form"}
+  else if(input["symbol"]=="<"){"Participle of Verb"}
+  else if(input["symbol"]=="="){"Attribute"}
+  else if(input["symbol"]==">"){"Cause"}
+  else if(input["symbol"]=="$"){"Verb Group"}
 }
 
 readVerbData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
