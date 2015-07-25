@@ -25,6 +25,7 @@ runIntegrationTests <-function(dataPath="./testData/", verbose=FALSE){
   createSynsetNodes(graph, testData, verbose=verbose);
   unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),127);
   unitTest("Synset-Lex relationship count",countRelationshipsByLabel(graph,"has_lexicographer_file"),127);
+  unitTest("Synset-Lex relationship count",countRelationshipsByLabel(graph,"has_sentence_frame"),31);
   
   #Create word nodes
   createWordNodes(graph, testData, verbose=verbose);

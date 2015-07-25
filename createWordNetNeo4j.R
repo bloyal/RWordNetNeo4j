@@ -68,6 +68,9 @@ createSynsetNodes <- function(graph,posList, verbose=TRUE){
   if(verbose){print("Creating Synset Nodes");}
   addIndex(graph, "Synset","synsetOffset");
   invisible(lapply(posList, createPOSSpecificSynsetNodes, graph, verbose));
+  
+  if(verbose){print("Creating verb synset-sentence frame relationships");}
+  createVerbFrameRelationships(posList$verb);
 }
 
 createWordNodes <- function(graph, posList, verbose=TRUE){
@@ -488,3 +491,38 @@ createSingleVerbFrame  <- function(transaction, data){
                sentenceFrame = data$sentenceFrame
   );
 }  
+
+createVerbFrameRelationships <- function(verbSynsets){
+  verbFrameFrame<- ldply(apply(verbSynsets,1,transformSynsetDataToFramePointerMap));
+  #Create synset-frame relationships (including word as a parameter)
+  bulkGraphUpdate(graph, verbFrameFrame, createSingleSynsetFrameRelationship);
+}
+
+#process single line of synset data (inside apply) to create a narrow data frame with x columns: 
+#start SynID, Start POS, frame number, word
+transformSynsetDataToFramePointerMap <- function(synsetLine){
+  #print(synsetLine);
+  startOffset<-synsetLine["synsetOffset"];
+  startPOS<-synsetLine["pos"];
+  frames<-ldply(strsplit(str_match_all(synsetLine["frames"], "(\\d{2} \\d{2})")[[1]][,1]," "));
+  df<-data.frame(startOffset=startOffset, startPOS=startPOS, 
+             frameNumber=as.numeric(frames$V1), wordNum=as.numeric(frames$V2),
+             stringsAsFactors=FALSE, row.names=NULL);
+  word<-apply(df, 1, function(x){
+    if(x["wordNum"] == 0){""} #Change this to comma-delimited list of words
+    else{
+      endWords<-strsplit(synsetLine$words,"\\s")[[1]];
+      endWordNum <- ceiling(as.numeric(x["wordNum"]) / 2);
+      endWords[endWordNum];
+    }
+  })
+  cbind(df, word);
+}
+
+createSingleSynsetFrameRelationship <- function(transaction, data){
+  #print(data);
+  query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:VerbFrame {number:{frameNumber}})
+            MERGE (a)-[:has_sentence_frame {word:{word}}]->(b)";  
+  appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
+               frameNumber = data$frameNumber, word = data$word)
+}
