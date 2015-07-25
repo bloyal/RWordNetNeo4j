@@ -2,9 +2,9 @@
 #source('createWordNetNeo4j.R');
 
 #--------------
-runIntegrationTests <-function(dataPath="./testData/"){
+runIntegrationTests <-function(dataPath="./testData/", verbose=FALSE){
   #Load in POS test data
-  testData<-readPOSdata(dataPath, verbose=FALSE);
+  testData<-readPOSdata(dataPath, verbose);
   unitTest("Noun data count", nrow(testData$noun),27);
   unitTest("Verb data count", nrow(testData$verb),25);
   unitTest("Adjective data count", nrow(testData$adj),50);
@@ -14,21 +14,25 @@ runIntegrationTests <-function(dataPath="./testData/"){
   graph<-newGraph(username="neo4j", password="graph");
   
   #Create lex nodes
-  createLexNodes(graph, verbose=FALSE);
+  createLexNodes(graph, verbose=verbose);
   unitTest("Lexicographer node count", countNodesbyLabel(graph, "LexName"),45);
   
+  #Create frame nodes
+  createFrameNodes(graph, verbose=verbose);
+  unitTest("Verb frame node count", countNodesbyLabel(graph, "VerbFrame"),35);
+  
   #Create synset nodes
-  createSynsetNodes(graph, testData, verbose=FALSE);
+  createSynsetNodes(graph, testData, verbose=verbose);
   unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),127);
   unitTest("Synset-Lex relationship count",countRelationshipsByLabel(graph,"has_lexicographer_file"),127);
   
   #Create word nodes
-  createWordNodes(graph, testData, verbose=FALSE);
+  createWordNodes(graph, testData, verbose=verbose);
   unitTest("Word node count", countNodesbyLabel(graph, "Word"),204);
   unitTest("Synset-Word relationship count",countRelationshipsByLabel(graph,"has_word"),218);
     
   #Create Synset pointer relationships
-  createSynsetPointers(graph, testData, verbose=FALSE);
+  createSynsetPointers(graph, testData, verbose=verbose);
   unitTest("Synset pointer count",countRelationshipsByLabel(graph,"has_pointer"),128);
 }
 

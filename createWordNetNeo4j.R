@@ -41,9 +41,16 @@ source('testFunctions.R');
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
 createLexNodes <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE) {
   if(verbose) {print("Creating lexicographer file nodes");}
-  lexData <- getLexNames(dictPath);
+  lexData <- getLexNames(dictPath, verbose);
   addIndex(graph,"LexName","fileNumber");
   bulkGraphUpdate(graph, lexData, createSingleLexNode);
+}
+
+createFrameNodes <- function(graph, verbose=TRUE){
+  if(verbose){print("Creating verb sentance frame nodes")}
+  frameData<- read.csv("verbFrameLookup.csv", stringsAsFactors = FALSE);
+  addIndex(graph,"VerbFrame","number");
+  bulkGraphUpdate(graph, frameData, createSingleVerbFrame);
 }
 
 #Read in POS data from dict folder
@@ -76,7 +83,8 @@ createSynsetPointers <- function(graph, posList, verbose=TRUE){
 
 #-----------Lower-Level Functions----------
 
-getLexNames <- function(dictPath){
+getLexNames <- function(dictPath, verbose){
+  if(verbose){print("Retrieving lex file names")}
   lexData<-read.table(paste(dictPath,"lexnames", sep="/"), sep="\t", col.names=c("fileNumber","fileName","synCat"),stringsAsFactors=FALSE);
   lexData$synCat <- updateSynCat(lexData$synCat);
   lexData["description"] <- getLexDescriptions();
@@ -124,6 +132,7 @@ createSingleLexNode  <- function(transaction, data){
                description = data$description
   );
 }  
+
 
 findSynsetData <- function(offset, data){
   data[grep(paste("^",offset, " .*",sep=""),data)]
@@ -374,7 +383,7 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 }
 
 createSemanticAndLexicalPointers <- function(synsetData, graph, verbose=TRUE){
-  if(verbose){print(paste("Creating ",synsetData[1,5]," synset pointers",sep=""))}
+  if(verbose){print(paste("Creating ",synsetData[1,5]," pointers",sep=""))}
   
   #print("Creating SS rels");
   synsetPointerFrame <- getSynsetPointerFrame(synsetData);
@@ -468,3 +477,14 @@ createSingleLexicalPointer <- function(transaction, data){
   appendCypher(transaction, query, startWord = data$startWord, endWord = data$endWord,
                pointerSymbol = data$pointerSymbol, pointerType = data$pointerType);
 }
+
+createSingleVerbFrame  <- function(transaction, data){
+  query <- "MERGE (:VerbFrame {
+                      number:{number},
+                      sentenceFrame:{sentenceFrame}
+                    })";  
+  appendCypher(transaction, query, 
+               number = data$number,
+               sentenceFrame = data$sentenceFrame
+  );
+}  
