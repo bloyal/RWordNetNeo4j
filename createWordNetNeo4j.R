@@ -67,9 +67,6 @@ createSynsetNodes <- function(graph,posList, verbose=TRUE){
   if(verbose){print("Creating synset nodes and lex file relationships");}
   addIndex(graph, "Synset","synsetOffset");
   invisible(lapply(posList, createPOSSpecificSynsetNodes, graph, verbose));
-  
-  if(verbose){print("Creating verb synset-sentence frame relationships");}
-  createVerbFrameRelationships(posList$verb);
 }
 
 createWordNodes <- function(graph, posList, verbose=TRUE){
@@ -81,8 +78,10 @@ createWordNodes <- function(graph, posList, verbose=TRUE){
 createSynsetPointers <- function(graph, posList, verbose=TRUE){
   if(verbose){print("Creating synset pointers");}
   invisible(lapply(posList, createSemanticAndLexicalPointers, graph, verbose));
+  
+  if(verbose){print("Creating verb synset-sentence frame relationships");}
+  createVerbFrameRelationships(posList$verb, graph, verbose=verbose);
 }
-
 
 #-----------Lower-Level Functions------------------------------
 
@@ -321,24 +320,16 @@ createSingleSemanticPointer <- function(transaction, data){
 }
 
 getLexicalPointerWords <- function(graph, pointerFrame){
-  #remove semantic pointer rows
-  #pointerFrame<-pointerFrame[pointerFrame$startWordNum!="00",];
-  
   #Add empty columns for start and end words
   pointerFrame<-cbind(pointerFrame, startWord = rep("",nrow(pointerFrame)), endWord = rep("",nrow(pointerFrame)), stringsAsFactors=FALSE);
   
   #iterate through lexical pointers, pull out start/end words and add to data frame
-  #NOTE: This is probably going to be really slow. Should try to refactor at some point
   for (i in 1:nrow(pointerFrame)){
+    #NOTE: This is probably going to be really slow due to db reads. Should try to refactor at some point
     words <- searchForLexicalWords(graph, pointerFrame[i,]);
     if(!is.null(words$endWords)){
-      startWords<-strsplit(words$startWords,"\\s")[[1]];
-      startWordNum <- ceiling((as.numeric(pointerFrame[i,"startWordNum"])) / 2);
-      pointerFrame[i,"startWord"] <- startWords[startWordNum];
-      
-      endWords<-strsplit(words$endWords,"\\s")[[1]];
-      endWordNum <- ceiling((as.numeric(pointerFrame[i,"endWordNum"])) / 2);
-      pointerFrame[i,"endWord"] <- endWords[endWordNum];
+      pointerFrame[i,"startWord"] <- getWordByNumber(words$startWords, pointerFrame[i,"startWordNum"]);
+      pointerFrame[i,"endWord"] <- getWordByNumber(words$endWords, pointerFrame[i,"endWordNum"]);
     }
   }
   return(pointerFrame);
@@ -372,39 +363,47 @@ translateMultiPointerSymbols <- function(symbolVector, posVector){
 
 #Functions for creating verb frame relationships--------------------------------
 
-createVerbFrameRelationships <- function(verbSynsets){
-  verbFrameFrame<- ldply(apply(verbSynsets,1,transformSynsetDataToFramePointerMap));
-  #Create synset-frame relationships (including word as a parameter)
-  bulkGraphUpdate(graph, verbFrameFrame, createSingleSynsetFrameRelationship);
+createVerbFrameRelationships <- function(verbSynsets, graph, verbose=TRUE){
+  if(verbose){print("Creating verb frame relationships");}
+  verbFrameFrame<- ldply(apply(verbSynsets,1,transformSynsetDataToFrameMap));
+  #Create synset-frame relationships
+  bulkGraphUpdate(graph, verbFrameFrame[verbFrameFrame$wordNum==0,], createSingleSynsetFrameRelationship);
+  
+  #Create word-frame relationships
+  bulkGraphUpdate(graph, verbFrameFrame[verbFrameFrame$wordNum!=0,], createSingleWordFrameRelationship);
 }
 
-#process single line of synset data (inside apply) to create a narrow data frame with x columns: 
-#start SynID, Start POS, frame number, word
-transformSynsetDataToFramePointerMap <- function(synsetLine){
-  #print(synsetLine);
+#process single line of synset data (inside apply) to create a narrow data frame
+transformSynsetDataToFrameMap <- function(synsetLine){
   startOffset<-synsetLine["synsetOffset"];
   startPOS<-synsetLine["pos"];
   frames<-ldply(strsplit(str_match_all(synsetLine["frames"], "(\\d{2} \\d{2})")[[1]][,1]," "));
-  df<-data.frame(startOffset=startOffset, startPOS=startPOS, 
+  frameFrame<-data.frame(startOffset=startOffset, startPOS=startPOS, 
              frameNumber=as.numeric(frames$V1), wordNum=as.numeric(frames$V2),
              stringsAsFactors=FALSE, row.names=NULL);
-  word<-apply(df, 1, function(x){
+  
+  word<-apply(frameFrame, 1, function(x){
     if(x["wordNum"] == 0){""} #Change this to comma-delimited list of words
     else{
-      endWords<-strsplit(synsetLine$words,"\\s")[[1]];
-      endWordNum <- ceiling(as.numeric(x["wordNum"]) / 2);
-      endWords[endWordNum];
+      getWordByNumber(synsetLine[["words"]], x[["wordNum"]])
     }
   })
-  cbind(df, word);
+  cbind(frameFrame, word);
 }
 
 createSingleSynsetFrameRelationship <- function(transaction, data){
-  #print(data);
   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:VerbFrame {number:{frameNumber}})
-            MERGE (a)-[:has_sentence_frame {word:{word}}]->(b)";  
+            MERGE (a)-[:has_sentence_frame {synsetOffset:{startOffset}, synsetPOS:{startPOS}}]->(b)";  
   appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
                frameNumber = data$frameNumber, word = data$word)
+}
+
+createSingleWordFrameRelationship <- function(transaction, data){
+  query <- "MATCH (a:Word {name:{name}}), (b:VerbFrame {number:{frameNumber}})
+            MERGE (a)-[:has_sentence_frame {synsetOffset:{synsetOffset}, synsetPOS:{synsetPOS}}]->(b)";  
+  appendCypher(transaction, query, 
+               name = data$word, frameNumber = data$frameNumber,
+               synsetOffset = data$startOffset, synsetPOS = data$startPOS);
 }
 
 #General functions------------------------------
@@ -505,4 +504,10 @@ translateSynsetPointerSymbol <- function(input){
   else if(input["symbol"]=="="){"Attribute"}
   else if(input["symbol"]==">"){"Cause"}
   else if(input["symbol"]=="$"){"Verb Group"}
+}
+
+getWordByNumber <- function(synsetWords, wordNum){
+  words<-strsplit(synsetWords,"\\s")[[1]];
+  convertedWordNum <- ceiling(as.numeric(wordNum) / 2);
+  words[convertedWordNum];
 }

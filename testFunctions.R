@@ -6,7 +6,7 @@ runIntegrationTests <-function(dataPath="./testData/", verbose=FALSE){
   #Load in POS test data
   testData<-readPOSdata(dataPath, verbose);
   unitTest("Noun data count", nrow(testData$noun),27);
-  unitTest("Verb data count", nrow(testData$verb),25);
+  unitTest("Verb data count", nrow(testData$verb),26);
   unitTest("Adjective data count", nrow(testData$adj),50);
   unitTest("Adverb data count", nrow(testData$adv),25);
   
@@ -23,18 +23,18 @@ runIntegrationTests <-function(dataPath="./testData/", verbose=FALSE){
   
   #Create synset nodes
   createSynsetNodes(graph, testData, verbose=verbose);
-  unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),127);
-  unitTest("Synset-Lex relationship count",countRelationshipsByLabel(graph,"has_lexicographer_file"),127);
-  unitTest("Synset-Lex relationship count",countRelationshipsByLabel(graph,"has_sentence_frame"),31);
+  unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),128);
+  unitTest("Synset-Lex relationship count",countRelationshipsByLabel(graph,"has_lexicographer_file"),128);
   
   #Create word nodes
   createWordNodes(graph, testData, verbose=verbose);
-  unitTest("Word node count", countNodesbyLabel(graph, "Word"),204);
-  unitTest("Synset-Word relationship count",countRelationshipsByLabel(graph,"has_word"),218);
+  unitTest("Word node count", countNodesbyLabel(graph, "Word"),206);
+  unitTest("Synset-Word relationship count",countRelationshipsByLabel(graph,"has_word"),220);
     
   #Create Synset pointer relationships
   createSynsetPointers(graph, testData, verbose=verbose);
   unitTest("Synset pointer count",countRelationshipsByLabel(graph,"has_pointer"),128);
+  unitTest("Synset-Frame relationship count",countRelationshipsByLabel(graph,"has_sentence_frame"),33);
 }
 
 unitTest <- function(testName, actualValue, expectedValue){
