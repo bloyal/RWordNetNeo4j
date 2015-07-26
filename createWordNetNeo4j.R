@@ -37,15 +37,22 @@ source('testFunctions.R');
 
 #runIntegrationTests();
 
-createWordnetGraph <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE){
+createWordnetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE){
+  if(verbose){print(Sys.time())};
   graph<-newGraph(username="neo4j", password="graph");
+  if(verbose){print(Sys.time())};
   createLexNodes(graph, dictPath, verbose=verbose);
+  if(verbose){print(Sys.time())};
   createFrameNodes(graph, verbose=verbose);
   
+  if(verbose){print(Sys.time())};
   wordNetData<-readPOSdata(dictPath, verbose);
   
+  if(verbose){print(Sys.time())};
   createSynsetNodes(graph, wordNetData, verbose=verbose);
+  if(verbose){print(Sys.time())};
   createWordNodes(graph, wordNetData, verbose=verbose);
+  if(verbose){print(Sys.time())};
   createSynsetPointers(graph, wordNetData, verbose=verbose);
 }
 
