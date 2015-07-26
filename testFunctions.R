@@ -2,24 +2,25 @@
 #source('createWordNetNeo4j.R');
 
 #--------------
-runIntegrationTests <-function(dataPath="./testData/", verbose=FALSE){
-  #Load in POS test data
-  testData<-readPOSdata(dataPath, verbose);
-  unitTest("Noun data count", nrow(testData$noun),27);
-  unitTest("Verb data count", nrow(testData$verb),26);
-  unitTest("Adjective data count", nrow(testData$adj),50);
-  unitTest("Adverb data count", nrow(testData$adv),25);
+runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
   
   #Initiate graph
   graph<-newGraph(username="neo4j", password="graph");
   
   #Create lex nodes
-  createLexNodes(graph, verbose=verbose);
+  createLexNodes(graph, dictPath, verbose=verbose);
   unitTest("Lexicographer node count", countNodesbyLabel(graph, "LexName"),45);
   
   #Create frame nodes
   createFrameNodes(graph, verbose=verbose);
   unitTest("Verb frame node count", countNodesbyLabel(graph, "VerbFrame"),35);
+  
+  #Load in POS test data
+  testData<-readPOSdata(dictPath, verbose);
+  unitTest("Noun data count", nrow(testData$noun),27);
+  unitTest("Verb data count", nrow(testData$verb),26);
+  unitTest("Adjective data count", nrow(testData$adj),50);
+  unitTest("Adverb data count", nrow(testData$adv),25);
   
   #Create synset nodes
   createSynsetNodes(graph, testData, verbose=verbose);

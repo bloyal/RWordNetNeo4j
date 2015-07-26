@@ -37,6 +37,18 @@ source('testFunctions.R');
 
 #runIntegrationTests();
 
+createWordnetGraph <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE){
+  graph<-newGraph(username="neo4j", password="graph");
+  createLexNodes(graph, dictPath, verbose=verbose);
+  createFrameNodes(graph, verbose=verbose);
+  
+  wordNetData<-readPOSdata(dictPath, verbose);
+  
+  createSynsetNodes(graph, wordNetData, verbose=verbose);
+  createWordNodes(graph, wordNetData, verbose=verbose);
+  createSynsetPointers(graph, wordNetData, verbose=verbose);
+}
+
 # Create nodes representing the 45 lexicographer files described at
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
 createLexNodes <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE) {
@@ -54,12 +66,12 @@ createFrameNodes <- function(graph, verbose=TRUE){
 }
 
 #Read in POS data from dict folder
-readPOSdata <- function(folderPath="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+readPOSdata <- function(dictPath="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
   if(verbose){print("Reading POS data");}
-  advData<-readAdvData(folderPath, verbose);
-  verbData<-readVerbData(folderPath, verbose);
-  adjData<-readAdjData(folderPath, verbose);
-  nounData<-readNounData(folderPath, verbose);
+  advData<-readAdvData(dictPath, verbose);
+  verbData<-readVerbData(dictPath, verbose);
+  adjData<-readAdjData(dictPath, verbose);
+  nounData<-readNounData(dictPath, verbose);
   list(adv = advData, verb = verbData, adj = adjData, noun = nounData);
 }
 
@@ -137,9 +149,9 @@ createSingleVerbFrame  <- function(transaction, data){
 
 #Functions for reading POS data-----------------------------------------------
 
-readVerbData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+readVerbData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
   if(verbose){print("Reading verb data");}
-  path<-paste(path,"data.verb",sep="")
+  path<-paste(path,"data.verb",sep="/")
   verbData<-readPosDataFile(path);
   #For verbs, need special step to remove frame from end of pointers and remove space from front of frames!
   removeFramesFromPointers(verbData);
@@ -150,21 +162,21 @@ removeFramesFromPointers<-function(verbData){
   return(verbData);
 }
 
-readAdvData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+readAdvData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
   if(verbose){print("Reading adverb data");}
-  path<-paste(path,"data.adv",sep="")
+  path<-paste(path,"data.adv",sep="/")
   readPosDataFile(path);
 }
 
-readNounData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+readNounData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
   if(verbose){print("Reading noun data");}
-  path<-paste(path,"data.noun",sep="")
+  path<-paste(path,"data.noun",sep="/")
   readPosDataFile(path);
 }
 
-readAdjData <- function(path="~/Downloads/WordNet-3.0/dict/", verbose=TRUE){
+readAdjData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
   if(verbose){print("Reading adjective data");}
-  path<-paste(path,"data.adj",sep="")
+  path<-paste(path,"data.adj",sep="/")
   readPosDataFile(path);
 }
 
