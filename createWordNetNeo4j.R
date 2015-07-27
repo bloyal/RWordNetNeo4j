@@ -50,6 +50,9 @@ createWordnetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbos
   
   if(verbose){print(Sys.time())};
   createSynsetNodes(graph, wordNetData, verbose=verbose);
+  
+  #Should put something here that converts wordNetData into word Frame for use below
+  
   if(verbose){print(Sys.time())};
   createWordNodes(graph, wordNetData, verbose=verbose);
   if(verbose){print(Sys.time())};
@@ -228,6 +231,7 @@ convertSynsetPartsToDf <- function(synsetParts){
 createPOSSpecificSynsetNodes <- function(synsetData, graph, verbose=TRUE){
   if(verbose){print(paste("Creating ",synsetData[1,5]," synsets",sep=""))}
   bulkGraphUpdate(graph, synsetData, createSingleSynsetNode);
+  if(verbose){print(paste("Creating ",synsetData[1,5]," synset-lex relationships",sep=""))}
   bulkGraphUpdate(graph, synsetData, createSingleSynsetLexRelationship);
 }
 
