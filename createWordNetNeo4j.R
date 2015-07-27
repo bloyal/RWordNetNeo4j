@@ -195,7 +195,10 @@ readPosDataFile <- function(path="~/Downloads/WordNet-3.0/dict/data.verb"){
 
 processSynsetData <- function(synsetData){
   synsetData <- matchSynsetParts(synsetData);
-  convertSynsetPartsToDf(synsetData);
+  #print(synsetData);
+  x<-convertSynsetPartsToDf(synsetData);
+  #print(x);
+  x;
 }
 
 matchSynsetParts <- function(dataRecord){
@@ -209,8 +212,11 @@ convertSynsetPartsToDf <- function(synsetParts){
                                             pos = x[4],
                                             posName = translatePOS(x[4]),
                                             wCnt = strtoi(x[5],16),
-                                            words = str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[2],
-                                            pCnt = as.integer(str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[3]),
+                                            #words = str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[2],
+                                            #pCnt = as.integer(str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[3]),
+                                            #pointers = str_match(x[6],"\\d{3} (.+$)")[2],
+                                            words = str_match(x[6],"(^.+ [0-9a-f]{1}) (\\d{3})(\\s|$)")[2],
+                                            pCnt = as.integer(str_match(x[6],"(^.+ [0-9a-f]{1}) (\\d{3})(\\s|$)")[3]),
                                             pointers = str_match(x[6],"\\d{3} (.+$)")[2],
                                             frames = str_match(x[6],"\\W(\\d{2} \\+ \\d{2} .+)$")[2],
                                             gloss = x[7],
@@ -273,7 +279,8 @@ transformSynsetDataToWordMap <- function(synsetLine){
   offset<-synsetLine["synsetOffset"];
   pos<-synsetLine["pos"];
   #words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]),"_"," ");
-  words<-str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]);
+  #words<-str_to_lower(str_match_all(synsetLine["words"], "(\\S+) \\d")[[1]][,2]);
+  words<-str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]);
   df<-data.frame(synsetOffset=offset, pos=pos, name=words, stringsAsFactors=FALSE, row.names=NULL);
   cbind(df,wordNum=as.numeric(rownames(df)));
 }
