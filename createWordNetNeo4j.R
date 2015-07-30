@@ -520,27 +520,22 @@ createWordnetGraphMem <- function(dictPath = "~/Downloads/WordNet-3.0/dict", ver
   createSynsetNodes(graph, wordNetData, verbose=verbose);
   
   #Create words
-  wordFrames <- lapply(wordNetData, getWordFrame);
-  createWordNodesMem(graph, wordFrames, verbose=verbose);
+  wordFrame <- ldply(lapply(wordNetData, getWordFrame));
+  createWordNodesMem(graph, wordFrame, verbose=verbose);
   
   #Create semantic pointers
-  pointerFrames <- lapply(wordNetData, getSynsetPointerFrame);
-  createSemanticPointersMem(graph, pointerFrames, verbose=verbose);
+  pointerFrames <- ldply(lapply(wordNetData, getSynsetPointerFrame));
+  createSemanticPointersMem(graph, pointerFrames[pointerFrames$startWordNum=="00",], verbose=verbose);
   
   #Create lexical pointers #Start here!
-  #pointerFrames <- getLexicalPointerWords(graph, synsetPointerFrame[synsetPointerFrame$startWordNum!="00",]);
+  pointerFrames2 <- getLexicalPointerWordsMem(graph, pointerFrames[pointerFrames$startWordNum!="00",], wordFrame);
   #Create verb frame relationships
 }
 
-createWordNodesMem <- function(graph, posList, verbose=TRUE){
+createWordNodesMem <- function(graph, wordFrame, verbose=TRUE){
   if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
   addIndex(graph, "Word", "name");
-  invisible(lapply(posList, createPOSSpecificWordNodesMem, graph, verbose));
-}
-
-createPOSSpecificWordNodesMem <- function(wordFrame, graph, verbose=TRUE){
-  if(verbose){print(paste(Sys.time(), ": Creating ",translatePOS(wordFrame[1,2])," words",sep=""))}
-  #Make a data frame to map relationships between synset offsets and words
+  #invisible(lapply(posList, createPOSSpecificWordNodesMem, graph, verbose));
   bulkGraphUpdate(graph, wordFrame, createSingleWordNode);
   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
 }
@@ -555,10 +550,39 @@ createSynsetPointersMem <- function(graph, posList, verbose=TRUE){
 
 createSemanticPointersMem <- function(graph, synsetPointerFrame, verbose=TRUE){
   if(verbose) {print(paste(Sys.time(),"Creating semantic synset pointers", sep=": "))};
-  invisible(lapply(synsetPointerFrame, createPOSSpecificSemanticPointersMem, graph, verbose));
+  bulkGraphUpdate(graph, synsetPointerFrame, createSingleSemanticPointer);
 }
 
-createPOSSpecificSemanticPointersMem <- function(synsetPointerFrame, graph, verbose=TRUE){
-  if(verbose){print(paste(Sys.time(), ": Creating ",translatePOS(synsetPointerFrame[1,3])," semantic pointers",sep=""))}
-  bulkGraphUpdate(graph, synsetPointerFrame[synsetPointerFrame$startWordNum=="00",], createSingleSemanticPointer);
+getLexicalPointerWordsMem <- function(graph, pointerFrame, wordFrame){
+  #Add empty columns for start and end words
+  pointerFrame<-cbind(pointerFrame, startWord = rep("",nrow(pointerFrame)), endWord = rep("",nrow(pointerFrame)), stringsAsFactors=FALSE);
+  
+  #iterate through lexical pointers, pull out start/end words and add to data frame
+  for (i in 1:nrow(pointerFrame)){
+    words <- searchForLexicalWordsMem(pointerFrame[i,], wordFrame);
+    print(words);
+    if(!is.null(words$endWord)){
+      pointerFrame[i,"startWord"] <- words$startWord
+      pointerFrame[i,"endWord"] <- words$endWord
+    }
+  }
+  return(pointerFrame);
+}
+
+searchForLexicalWordsMem <- function(pointerLine, wordFrame){
+  #print(pointerLine);
+  
+  startOffset<-pointerLine$startOffset;
+  startPOS<-pointerLine$startPOS;
+  startWordNum<-pointerLine$startWordNum;
+  endOffset<-pointerLine$endOffset;
+  endPOS<-pointerLine$endPOS;
+  endWordNum<-pointerLine$endWordNum;
+  print(wordFrame[wordFrame$synsetOffset==startOffset & wordFrame$pos==startPOS & wordFrame$wordNum==startWordNum,])
+  
+  list(
+    startWord=wordFrame[wordFrame$synsetOffset==startOffset & wordFrame$pos==startPOS & wordFrame$wordNum==startWordNum,"name"],
+    endWord=wordFrame[wordFrame$synsetOffset==endOffset & wordFrame$pos==endPOS & wordFrame$wordNum==endWordNum,"name"]
+  );
+  
 }
