@@ -40,7 +40,7 @@ runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
   unitTest("Semantic pointer count",countRelationshipsByLabel(graph,"has_pointer"),97);
   
   #Create lexical pointers
-  pointerFrame <- getLexicalPointerWordsMem(pointerFrame[pointerFrame$startWordNum!="00",], wordFrame);
+  pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!="00",], wordFrame);
   createLexicalPointers(graph, pointerFrame, verbose=verbose);
   unitTest("Semantic + lexical pointer count",countRelationshipsByLabel(graph,"has_pointer"),131);
   

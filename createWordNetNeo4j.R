@@ -38,7 +38,7 @@ createWordNetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbos
   createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum=="00",], verbose=verbose);
   
   #Create lexical pointers
-  pointerFrame <- getLexicalPointerWordsMem(pointerFrame[pointerFrame$startWordNum!="00",], wordFrame);
+  pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!="00",], wordFrame);
   createLexicalPointers(graph, pointerFrame, verbose=verbose);
   
   #Create verb frame relationships
@@ -317,6 +317,10 @@ createSingleSemanticPointer <- function(transaction, data){
                pointerSymbol = data$pointerSymbol, pointerType = data$pointerType);
 }
 
+#--------------------------------------------------------------------------------------
+# Functions for creating lexical pointers
+#--------------------------------------------------------------------------------------
+
 getLexicalPointerWords <- function(pointerFrame, wordFrame){
   #Add empty columns for start and end words
   pointerFrame<-cbind(pointerFrame, startWord = rep("",nrow(pointerFrame)), endWord = rep("",nrow(pointerFrame)), stringsAsFactors=FALSE);
@@ -350,14 +354,18 @@ searchForLexicalWords <- function(pointerLine, wordFrame){
 createLexicalPointers <- function(graph, lexPointerFrame, verbose=TRUE){
   if(verbose) {print(paste(Sys.time(),"Creating lexical synset pointers", sep=": "))};
   bulkGraphUpdate(graph, lexPointerFrame, createSingleLexicalPointer);
- }
-
-translateMultiPointerSymbols <- function(symbolVector, posVector){
-  input <- data.frame(symbol = symbolVector, pos = posVector, stringsAsFactors = FALSE);
-  unlist(apply(input, 1, translateSynsetPointerSymbol));
 }
 
-#Functions for creating verb frame relationships--------------------------------
+createSingleLexicalPointer <- function(transaction, data){
+  query <- "MATCH (a:Word {name:{startWord}}), (b:Word {name:{endWord}})
+            MERGE (a)-[:has_pointer {relation:'Lexical', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
+  appendCypher(transaction, query, startWord = data$startWord, endWord = data$endWord,
+               pointerSymbol = data$pointerSymbol, pointerType = data$pointerType);
+}
+
+#--------------------------------------------------------------------------------------
+# Functions for creating verb frame relationships pointers
+#--------------------------------------------------------------------------------------
 
 createVerbFrameRelationships <- function (graph, verbFrameFrame, verbose){
   #Create synset-frame relationships
@@ -402,7 +410,9 @@ createSingleWordFrameRelationship <- function(transaction, data){
                synsetOffset = data$startOffset, synsetPOS = data$startPOS);
 }
 
-#General functions------------------------------
+#--------------------------------------------------------------------------------------
+# Miscellaneous functions
+#--------------------------------------------------------------------------------------
 
 findSynsetData <- function(offset, data){
   data[grep(paste("^",offset, " .*",sep=""),data)]
@@ -466,6 +476,12 @@ translateLexFilenum <- function(lexFilenum){
          "42"="verbs of being, having, spatial relations",
          "43"="verbs of raining, snowing, thawing, thundering",
          "44"="participial adjectives");
+}
+
+
+translateMultiPointerSymbols <- function(symbolVector, posVector){
+  input <- data.frame(symbol = symbolVector, pos = posVector, stringsAsFactors = FALSE);
+  unlist(apply(input, 1, translateSynsetPointerSymbol));
 }
 
 translateSynsetPointerSymbol <- function(input){
