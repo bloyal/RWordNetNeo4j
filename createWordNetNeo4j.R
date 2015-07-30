@@ -524,11 +524,13 @@ createWordnetGraphMem <- function(dictPath = "~/Downloads/WordNet-3.0/dict", ver
   createWordNodesMem(graph, wordFrame, verbose=verbose);
   
   #Create semantic pointers
-  pointerFrames <- ldply(lapply(wordNetData, getSynsetPointerFrame));
-  createSemanticPointersMem(graph, pointerFrames[pointerFrames$startWordNum=="00",], verbose=verbose);
+  pointerFrame <- ldply(lapply(wordNetData, getSynsetPointerFrame));
+  createSemanticPointersMem(graph, pointerFrame[pointerFrame$startWordNum=="00",], verbose=verbose);
   
-  #Create lexical pointers #Start here!
-  pointerFrames2 <- getLexicalPointerWordsMem(graph, pointerFrames[pointerFrames$startWordNum!="00",], wordFrame);
+  #Create lexical pointers
+  pointerFrame <- getLexicalPointerWordsMem(pointerFrame[pointerFrame$startWordNum!="00",], wordFrame);
+  createLexicalPointersMem(graph, pointerFrame, verbose=verbose);
+  
   #Create verb frame relationships
 }
 
@@ -553,15 +555,14 @@ createSemanticPointersMem <- function(graph, synsetPointerFrame, verbose=TRUE){
   bulkGraphUpdate(graph, synsetPointerFrame, createSingleSemanticPointer);
 }
 
-getLexicalPointerWordsMem <- function(graph, pointerFrame, wordFrame){
+getLexicalPointerWordsMem <- function(pointerFrame, wordFrame){
   #Add empty columns for start and end words
   pointerFrame<-cbind(pointerFrame, startWord = rep("",nrow(pointerFrame)), endWord = rep("",nrow(pointerFrame)), stringsAsFactors=FALSE);
   
   #iterate through lexical pointers, pull out start/end words and add to data frame
   for (i in 1:nrow(pointerFrame)){
     words <- searchForLexicalWordsMem(pointerFrame[i,], wordFrame);
-    print(words);
-    if(!is.null(words$endWord)){
+    if(length(words$endWord) != 0L){
       pointerFrame[i,"startWord"] <- words$startWord
       pointerFrame[i,"endWord"] <- words$endWord
     }
@@ -570,19 +571,21 @@ getLexicalPointerWordsMem <- function(graph, pointerFrame, wordFrame){
 }
 
 searchForLexicalWordsMem <- function(pointerLine, wordFrame){
-  #print(pointerLine);
-  
-  startOffset<-pointerLine$startOffset;
-  startPOS<-pointerLine$startPOS;
-  startWordNum<-pointerLine$startWordNum;
-  endOffset<-pointerLine$endOffset;
-  endPOS<-pointerLine$endPOS;
-  endWordNum<-pointerLine$endWordNum;
-  print(wordFrame[wordFrame$synsetOffset==startOffset & wordFrame$pos==startPOS & wordFrame$wordNum==startWordNum,])
-  
+
   list(
-    startWord=wordFrame[wordFrame$synsetOffset==startOffset & wordFrame$pos==startPOS & wordFrame$wordNum==startWordNum,"name"],
-    endWord=wordFrame[wordFrame$synsetOffset==endOffset & wordFrame$pos==endPOS & wordFrame$wordNum==endWordNum,"name"]
+    startWord=wordFrame[wordFrame$synsetOffset==pointerLine$startOffset & 
+                          wordFrame$pos==pointerLine$startPOS & 
+                          wordFrame$wordNum==as.numeric(pointerLine$startWordNum),
+                        "name"],
+    endWord=wordFrame[wordFrame$synsetOffset==pointerLine$endOffset & 
+                        wordFrame$pos==pointerLine$endPOS & 
+                        wordFrame$wordNum==as.numeric(pointerLine$endWordNum),
+                      "name"]
   );
   
+}
+
+createLexicalPointersMem <- function(graph, lexPointerFrame, verbose=TRUE){
+  if(verbose) {print(paste(Sys.time(),"Creating lexical synset pointers", sep=": "))};
+  bulkGraphUpdate(graph, lexPointerFrame, createSingleLexicalPointer);
 }
