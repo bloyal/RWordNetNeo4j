@@ -25,17 +25,29 @@ runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
   #Create synset nodes
   createSynsetNodes(graph, testData, verbose=verbose);
   unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),128);
-  unitTest("Synset-Lex relationship count",countRelationshipsByLabel(graph,"has_lexicographer_file"),128);
+  unitTest("Synset-lex file relationship count",countRelationshipsByLabel(graph,"has_lexicographer_file"),128);
   
   #Create word nodes
-  createWordNodes(graph, testData, verbose=verbose);
+  wordFrame <- ldply(lapply(testData, getWordFrame));
+  unitTest("Word data count", nrow(wordFrame),220);
+  createWordNodes(graph, wordFrame, verbose=verbose);
   unitTest("Word node count", countNodesbyLabel(graph, "Word"),206);
-  unitTest("Synset-Word relationship count",countRelationshipsByLabel(graph,"has_word"),220);
+  unitTest("Synset-word relationship count",countRelationshipsByLabel(graph,"has_word"),220);
     
-  #Create Synset pointer relationships
-  createSynsetPointers(graph, testData, verbose=verbose);
-  unitTest("Synset pointer count",countRelationshipsByLabel(graph,"has_pointer"),131);
-  unitTest("Synset-Frame relationship count",countRelationshipsByLabel(graph,"has_sentence_frame"),33);
+  #Create semantic pointers
+  pointerFrame <- ldply(lapply(testData, getSynsetPointerFrame));
+  createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum=="00",], verbose=verbose);
+  unitTest("Semantic pointer count",countRelationshipsByLabel(graph,"has_pointer"),97);
+  
+  #Create lexical pointers
+  pointerFrame <- getLexicalPointerWordsMem(pointerFrame[pointerFrame$startWordNum!="00",], wordFrame);
+  createLexicalPointers(graph, pointerFrame, verbose=verbose);
+  unitTest("Semantic + lexical pointer count",countRelationshipsByLabel(graph,"has_pointer"),131);
+  
+  #Create verb frame relationships
+  verbFrameFrame<- ldply(apply(testData$verb,1,transformSynsetDataToFrameMap));
+  createVerbFrameRelationships(graph, verbFrameFrame, verbose=verbose);
+  unitTest("Synset-verb frame relationship count",countRelationshipsByLabel(graph,"has_sentence_frame"),33);
 }
 
 unitTest <- function(testName, actualValue, expectedValue){
