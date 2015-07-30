@@ -62,14 +62,14 @@ createWordnetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbos
 # Create nodes representing the 45 lexicographer files described at
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
 createLexNodes <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE) {
-  if(verbose) {print("Creating lexicographer file nodes");}
+  if(verbose) {print(paste(Sys.time(),"Creating lexicographer file nodes", sep=": "))};
   lexData <- getLexNames(dictPath, verbose);
   addIndex(graph,"LexName","fileNumber");
   bulkGraphUpdate(graph, lexData, createSingleLexNode);
 }
 
 createFrameNodes <- function(graph, verbose=TRUE){
-  if(verbose){print("Creating verb sentance frame nodes")}
+  if(verbose) {print(paste(Sys.time(),"Creating verb sentance frame nodes", sep=": "))};
   frameData<- read.csv("verbFrameLookup.csv", stringsAsFactors = FALSE);
   addIndex(graph,"VerbFrame","number");
   bulkGraphUpdate(graph, frameData, createSingleVerbFrame);
@@ -77,7 +77,7 @@ createFrameNodes <- function(graph, verbose=TRUE){
 
 #Read in POS data from dict folder
 readPOSdata <- function(dictPath="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
-  if(verbose){print("Reading POS data");}
+  if(verbose) {print(paste(Sys.time(),"Reading POS data", sep=": "))}; 
   advData<-readAdvData(dictPath, verbose);
   verbData<-readVerbData(dictPath, verbose);
   adjData<-readAdjData(dictPath, verbose);
@@ -86,22 +86,22 @@ readPOSdata <- function(dictPath="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
 }
 
 createSynsetNodes <- function(graph,posList, verbose=TRUE){
-  if(verbose){print("Creating synset nodes and lex file relationships");}
+  if(verbose) {print(paste(Sys.time(),"Creating synset nodes and lex file relationships", sep=": "))};
   addIndex(graph, "Synset","synsetOffset");
   invisible(lapply(posList, createPOSSpecificSynsetNodes, graph, verbose));
 }
 
 createWordNodes <- function(graph, posList, verbose=TRUE){
-  if(verbose){print("Creating word nodes");}
+  if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
   addIndex(graph, "Word", "name");
   invisible(lapply(posList, createPOSSpecificWordNodes, graph, verbose));
 }
 
 createSynsetPointers <- function(graph, posList, verbose=TRUE){
-  if(verbose){print("Creating synset pointers");}
+  if(verbose) {print(paste(Sys.time(),"Creating synset pointers", sep=": "))};
   invisible(lapply(posList, createSemanticAndLexicalPointers, graph, verbose));
   
-  if(verbose){print("Creating verb synset-sentence frame relationships");}
+  if(verbose) {print(paste(Sys.time(),"Creating verb synset-frame nodes", sep=": "))};
   createVerbFrameRelationships(posList$verb, graph, verbose=verbose);
 }
 
@@ -110,7 +110,7 @@ createSynsetPointers <- function(graph, posList, verbose=TRUE){
 #Functions for creating lex nodes---------------
 
 getLexNames <- function(dictPath, verbose){
-  if(verbose){print("Retrieving lex file names")}
+  if(verbose) {print(paste(Sys.time(),"Retrieving lex file names", sep=": "))};
   lexData<-read.table(paste(dictPath,"lexnames", sep="/"), sep="\t", col.names=c("fileNumber","fileName","synCat"),stringsAsFactors=FALSE);
   lexData$synCat <- updateSynCat(lexData$synCat);
   lexData["description"] <- getLexDescriptions();
@@ -160,7 +160,7 @@ createSingleVerbFrame  <- function(transaction, data){
 #Functions for reading POS data-----------------------------------------------
 
 readVerbData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
-  if(verbose){print("Reading verb data");}
+  if(verbose) {print(paste(Sys.time(),"Reading verb data", sep=": "))};
   path<-paste(path,"data.verb",sep="/")
   verbData<-readPosDataFile(path);
   #For verbs, need special step to remove frame from end of pointers and remove space from front of frames!
@@ -173,19 +173,19 @@ removeFramesFromPointers<-function(verbData){
 }
 
 readAdvData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
-  if(verbose){print("Reading adverb data");}
+  if(verbose) {print(paste(Sys.time(),"Reading adverb data", sep=": "))};
   path<-paste(path,"data.adv",sep="/")
   readPosDataFile(path);
 }
 
 readNounData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
-  if(verbose){print("Reading noun data");}
+  if(verbose) {print(paste(Sys.time(),"Reading noun data", sep=": "))};
   path<-paste(path,"data.noun",sep="/")
   readPosDataFile(path);
 }
 
 readAdjData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
-  if(verbose){print("Reading adjective data");}
+  if(verbose) {print(paste(Sys.time(),"Reading adjective data", sep=": "))};
   path<-paste(path,"data.adj",sep="/")
   readPosDataFile(path);
 }
@@ -229,9 +229,9 @@ convertSynsetPartsToDf <- function(synsetParts){
 #Functions for creating synset nodes and lex relationships------------------------------------
 
 createPOSSpecificSynsetNodes <- function(synsetData, graph, verbose=TRUE){
-  if(verbose){print(paste("Creating ",synsetData[1,5]," synsets",sep=""))}
+  if(verbose){print(paste(Sys.time(), ": Creating ",synsetData[1,5]," synsets",sep=""))}
   bulkGraphUpdate(graph, synsetData, createSingleSynsetNode);
-  if(verbose){print(paste("Creating ",synsetData[1,5]," synset-lex relationships",sep=""))}
+  if(verbose){print(paste(Sys.time(), ": Creating ",synsetData[1,5]," synset-lex relationships",sep=""))}
   bulkGraphUpdate(graph, synsetData, createSingleSynsetLexRelationship);
 }
 
@@ -265,7 +265,7 @@ createSingleSynsetLexRelationship <- function(transaction, data){
 #Functions for creating word nodes------------------------------------------------------
 
 createPOSSpecificWordNodes <- function(synsetData, graph, verbose=TRUE){
-  if(verbose){print(paste("Creating ",synsetData[1,5]," words",sep=""))}
+  if(verbose){print(paste(Sys.time(), ": Creating ",synsetData[1,5]," words",sep=""))}
   #Make a data frame to map relationships between synset offsets and words
   wordFrame <- getWordFrame(synsetData);
   bulkGraphUpdate(graph, wordFrame, createSingleWordNode);
@@ -303,7 +303,7 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 #Functions for creating synset pointers---------------------------------------------------
 
 createSemanticAndLexicalPointers <- function(synsetData, graph, verbose=TRUE){
-  if(verbose){print(paste("Creating ",synsetData[1,5]," pointers",sep=""))}
+  if(verbose){print(paste(Sys.time(), ": Creating ",synsetData[1,5]," pointers",sep=""))}
   synsetPointerFrame <- getSynsetPointerFrame(synsetData);
   #Translate pointer symbols
   synsetPointerFrame <- cbind(synsetPointerFrame, 
@@ -394,7 +394,7 @@ translateMultiPointerSymbols <- function(symbolVector, posVector){
 #Functions for creating verb frame relationships--------------------------------
 
 createVerbFrameRelationships <- function(verbSynsets, graph, verbose=TRUE){
-  if(verbose){print("Creating verb frame relationships");}
+  if(verbose){print(paste(Sys.time(), ": Creating verb frame relationships", sep=""))};
   verbFrameFrame<- ldply(apply(verbSynsets,1,transformSynsetDataToFrameMap));
   #Create synset-frame relationships
   bulkGraphUpdate(graph, verbFrameFrame[verbFrameFrame$wordNum==0,], createSingleSynsetFrameRelationship);
