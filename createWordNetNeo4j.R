@@ -1,31 +1,5 @@
 #createWordNetNeo4j.R
 #Functions for creating a WordNet db in Neo4j
-
-#WordNet Release 3.0 This software and database is being provided to you, 
-#the LICENSEE, by Princeton University under the following license. 
-#By obtaining, using and/or copying this software and database, 
-#you agree that you have read, understood, and will comply with 
-#these terms and conditions.: Permission to use, copy, modify and 
-#distribute this software and database and its documentation for 
-#any purpose and without fee or royalty is hereby granted, 
-#provided that you agree to comply with the following copyright notice 
-#and statements, including the disclaimer, and that the same appear 
-#on ALL copies of the software, database and documentation, 
-#including modifications that you make for internal use or for 
-#distribution. WordNet 3.0 Copyright 2006 by Princeton University. 
-#All rights reserved. THIS SOFTWARE AND DATABASE IS PROVIDED "AS IS" 
-#AND PRINCETON UNIVERSITY MAKES NO REPRESENTATIONS OR WARRANTIES, 
-#EXPRESS OR IMPLIED. BY WAY OF EXAMPLE, BUT NOT LIMITATION, 
-#PRINCETON UNIVERSITY MAKES NO REPRESENTATIONS OR WARRANTIES OF 
-#MERCHANT- ABILITY OR FITNESS FOR ANY PARTICULAR PURPOSE OR THAT 
-#THE USE OF THE LICENSED SOFTWARE, DATABASE OR DOCUMENTATION WILL 
-#NOT INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS, TRADEMARKS OR 
-#OTHER RIGHTS. The name of Princeton University or Princeton may 
-#not be used in advertising or publicity pertaining to distribution 
-#of the software and/or database. Title to copyright in this software, 
-#database and any associated documentation shall at all times remain 
-#with Princeton University and LICENSEE agrees to preserve same.
-
 setwd("~/GitHub/RWordNetNeo4j")
 
 library(RNeo4j);
@@ -38,26 +12,19 @@ source('testFunctions.R');
 #runIntegrationTests();
 
 createWordnetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE){
-  if(verbose){print(Sys.time())};
   graph<-newGraph(username="neo4j", password="graph");
-  if(verbose){print(Sys.time())};
   createLexNodes(graph, dictPath, verbose=verbose);
-  if(verbose){print(Sys.time())};
   createFrameNodes(graph, verbose=verbose);
   
-  if(verbose){print(Sys.time())};
   wordNetData<-readPOSdata(dictPath, verbose);
-  
-  if(verbose){print(Sys.time())};
   createSynsetNodes(graph, wordNetData, verbose=verbose);
   
   #Should put something here that converts wordNetData into word Frame for use below
-  
-  if(verbose){print(Sys.time())};
   createWordNodes(graph, wordNetData, verbose=verbose);
-  if(verbose){print(Sys.time())};
   createSynsetPointers(graph, wordNetData, verbose=verbose);
 }
+
+
 
 # Create nodes representing the 45 lexicographer files described at
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
@@ -96,6 +63,8 @@ createWordNodes <- function(graph, posList, verbose=TRUE){
   addIndex(graph, "Word", "name");
   invisible(lapply(posList, createPOSSpecificWordNodes, graph, verbose));
 }
+
+
 
 createSynsetPointers <- function(graph, posList, verbose=TRUE){
   if(verbose) {print(paste(Sys.time(),"Creating synset pointers", sep=": "))};
@@ -272,6 +241,8 @@ createPOSSpecificWordNodes <- function(synsetData, graph, verbose=TRUE){
   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
 }
 
+
+
 #Create word frame
 getWordFrame <- function(synsetData){
   z<-apply(synsetData, 1, transformSynsetDataToWordMap)
@@ -305,11 +276,6 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 createSemanticAndLexicalPointers <- function(synsetData, graph, verbose=TRUE){
   if(verbose){print(paste(Sys.time(), ": Creating ",synsetData[1,5]," pointers",sep=""))}
   synsetPointerFrame <- getSynsetPointerFrame(synsetData);
-  #Translate pointer symbols
-  synsetPointerFrame <- cbind(synsetPointerFrame, 
-                              pointerType = translateMultiPointerSymbols(synsetPointerFrame$pointerSymbol, 
-                                                                         synsetPointerFrame$startPOS),
-                              stringsAsFactors = FALSE);
   
   #create semantic pointer relationships (i.e. between two synsets) 
   bulkGraphUpdate(graph, synsetPointerFrame[synsetPointerFrame$startWordNum=="00",], createSingleSemanticPointer);
@@ -325,7 +291,8 @@ getSynsetPointerFrame <- function(synsetData){
   #convert Synset data into a data frame with x columns: 
   #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
   z<-apply(synsetData[!is.na(synsetData$pointers),], 1, transformSynsetDataToSynPointerMap)
-  ldply(z)
+  z<-ldply(z);
+  cbind(z, pointerType = translateMultiPointerSymbols(z$pointerSymbol, z$startPOS), stringsAsFactors = FALSE);
 }
 
 #process single line of synset data (inside apply) to create a narrow data frame with x columns: 
@@ -540,4 +507,58 @@ getWordByNumber <- function(synsetWords, wordNum){
   words<-strsplit(synsetWords,"\\s")[[1]];
   convertedWordNum <- ceiling(as.numeric(wordNum) / 2);
   words[convertedWordNum];
+}
+#--------------------
+# Mem Functions
+createWordnetGraphMem <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE){
+  graph<-newGraph(username="neo4j", password="graph");
+  createLexNodes(graph, dictPath, verbose=verbose);
+  createFrameNodes(graph, verbose=verbose);
+  
+  #Create synsets
+  wordNetData <- readPOSdata(dictPath, verbose);
+  createSynsetNodes(graph, wordNetData, verbose=verbose);
+  
+  #Create words
+  wordFrames <- lapply(wordNetData, getWordFrame);
+  createWordNodesMem(graph, wordFrames, verbose=verbose);
+  
+  #Create semantic pointers
+  pointerFrames <- lapply(wordNetData, getSynsetPointerFrame);
+  createSemanticPointersMem(graph, pointerFrames, verbose=verbose);
+  
+  #Create lexical pointers #Start here!
+  #pointerFrames <- getLexicalPointerWords(graph, synsetPointerFrame[synsetPointerFrame$startWordNum!="00",]);
+  #Create verb frame relationships
+}
+
+createWordNodesMem <- function(graph, posList, verbose=TRUE){
+  if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
+  addIndex(graph, "Word", "name");
+  invisible(lapply(posList, createPOSSpecificWordNodesMem, graph, verbose));
+}
+
+createPOSSpecificWordNodesMem <- function(wordFrame, graph, verbose=TRUE){
+  if(verbose){print(paste(Sys.time(), ": Creating ",translatePOS(wordFrame[1,2])," words",sep=""))}
+  #Make a data frame to map relationships between synset offsets and words
+  bulkGraphUpdate(graph, wordFrame, createSingleWordNode);
+  bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
+}
+
+createSynsetPointersMem <- function(graph, posList, verbose=TRUE){
+  if(verbose) {print(paste(Sys.time(),"Creating synset pointers", sep=": "))};
+  invisible(lapply(posList, createSemanticAndLexicalPointers, graph, verbose));
+  
+  if(verbose) {print(paste(Sys.time(),"Creating verb synset-frame nodes", sep=": "))};
+  createVerbFrameRelationships(posList$verb, graph, verbose=verbose);
+}
+
+createSemanticPointersMem <- function(graph, synsetPointerFrame, verbose=TRUE){
+  if(verbose) {print(paste(Sys.time(),"Creating semantic synset pointers", sep=": "))};
+  invisible(lapply(synsetPointerFrame, createPOSSpecificSemanticPointersMem, graph, verbose));
+}
+
+createPOSSpecificSemanticPointersMem <- function(synsetPointerFrame, graph, verbose=TRUE){
+  if(verbose){print(paste(Sys.time(), ": Creating ",translatePOS(synsetPointerFrame[1,3])," semantic pointers",sep=""))}
+  bulkGraphUpdate(graph, synsetPointerFrame[synsetPointerFrame$startWordNum=="00",], createSingleSemanticPointer);
 }
