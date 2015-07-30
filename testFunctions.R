@@ -34,7 +34,7 @@ runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
     
   #Create Synset pointer relationships
   createSynsetPointers(graph, testData, verbose=verbose);
-  unitTest("Synset pointer count",countRelationshipsByLabel(graph,"has_pointer"),128);
+  unitTest("Synset pointer count",countRelationshipsByLabel(graph,"has_pointer"),131);
   unitTest("Synset-Frame relationship count",countRelationshipsByLabel(graph,"has_sentence_frame"),33);
 }
 
@@ -64,4 +64,12 @@ createTestDataFile <- function(testData, fileName){
   #body$frames <- paste(body$frames, "|", sep="");
   write.table(header, file=fileName, col.names = FALSE, row.names = FALSE, quote=FALSE);
   write.table(body, append=TRUE, na = "", file=fileName, col.names = FALSE, row.names = FALSE, quote=FALSE);
+}
+
+benchmark <- function(){
+  microbenchmark(
+    createWordnetGraph(dictPath = "./testData", verbose=FALSE),
+    createWordnetGraphMem(dictPath = "./testData", verbose=FALSE),
+    times=25L
+  )
 }

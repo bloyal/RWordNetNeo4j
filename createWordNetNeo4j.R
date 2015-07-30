@@ -348,7 +348,7 @@ searchForLexicalWords <- function(graph, pointerLine){
 
 createSingleLexicalPointer <- function(transaction, data){
   query <- "MATCH (a:Word {name:{startWord}}), (b:Word {name:{endWord}})
-            MERGE (a)-[:has_pointer {relationType:'Lexical', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
+            MERGE (a)-[:has_pointer {relation:'Lexical', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
   appendCypher(transaction, query, startWord = data$startWord, endWord = data$endWord,
                pointerSymbol = data$pointerSymbol, pointerType = data$pointerType);
 }
@@ -380,7 +380,7 @@ transformSynsetDataToFrameMap <- function(synsetLine){
              stringsAsFactors=FALSE, row.names=NULL);
   
   word<-apply(frameFrame, 1, function(x){
-    if(x["wordNum"] == 0){""} #Change this to comma-delimited list of words
+    if(x["wordNum"] == 0){""}
     else{
       getWordByNumber(synsetLine[["words"]], x[["wordNum"]])
     }
@@ -532,6 +532,10 @@ createWordnetGraphMem <- function(dictPath = "~/Downloads/WordNet-3.0/dict", ver
   createLexicalPointersMem(graph, pointerFrame, verbose=verbose);
   
   #Create verb frame relationships
+  verbFrameFrame<- ldply(apply(wordNetData$verb,1,transformSynsetDataToFrameMap));
+  createVerbFrames(graph, verbFrameFrame, verbose=verbose);
+  
+  if(verbose) {print(paste(Sys.time(),"Graph creation complete", sep=": "))};
 }
 
 createWordNodesMem <- function(graph, wordFrame, verbose=TRUE){
@@ -588,4 +592,14 @@ searchForLexicalWordsMem <- function(pointerLine, wordFrame){
 createLexicalPointersMem <- function(graph, lexPointerFrame, verbose=TRUE){
   if(verbose) {print(paste(Sys.time(),"Creating lexical synset pointers", sep=": "))};
   bulkGraphUpdate(graph, lexPointerFrame, createSingleLexicalPointer);
+}
+
+createVerbFrames <- function (graph, verbFrameFrame, verbose){
+  #Create synset-frame relationships
+  if(verbose) {print(paste(Sys.time(),"Creating synset-verb frame relationships", sep=": "))};
+  bulkGraphUpdate(graph, verbFrameFrame[verbFrameFrame$wordNum==0,], createSingleSynsetFrameRelationship);  
+  
+  #Create word-frame relationships
+  if(verbose) {print(paste(Sys.time(),"Creating word-verb frame relationships", sep=": "))};
+  bulkGraphUpdate(graph, verbFrameFrame[verbFrameFrame$wordNum!=0,], createSingleWordFrameRelationship);
 }

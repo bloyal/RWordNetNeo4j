@@ -5,7 +5,7 @@
 
 #Helper function to optimize Neo4j transaction sizes
 #May want to try and vectorize this
-bulkGraphUpdate <- function(graph, data, creationFunction, transactionMax=1000){
+bulkGraphUpdate <- function(graph, data, creationFunction, transactionMax=1000, verbose=TRUE){
   t <- newTransaction(graph);
   transactionCounter <- 0;
   for (i in 1:nrow(data)){
@@ -16,7 +16,7 @@ bulkGraphUpdate <- function(graph, data, creationFunction, transactionMax=1000){
       t <- newTransaction(graph);
       transactionCounter <- 0;
     }
-    printIteration(i,nrow(data),1000);
+    if(verbose){printIteration(i,nrow(data),1000)};
   }
   commit(t);
 }
