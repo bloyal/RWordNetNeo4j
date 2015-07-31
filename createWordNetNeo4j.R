@@ -35,10 +35,10 @@ createWordNetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbos
   
   #Create semantic pointers
   pointerFrame <- ldply(lapply(wordNetData, getSynsetPointerFrame));
-  createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum=="00",], verbose=verbose);
+  createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
   
   #Create lexical pointers
-  pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!="00",], wordFrame);
+  pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!=0,], wordFrame);
   createLexicalPointers(graph, pointerFrame, verbose=verbose);
   
   #Create verb frame relationships
@@ -245,10 +245,11 @@ createSingleSynsetLexRelationship <- function(transaction, data){
 #--------------------------------------------------------------------------------------
 
 createWordNodes <- function(graph, wordFrame, verbose=TRUE){
-  if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
   addIndex(graph, "Word", "name");
   #print(typeof(wordFrame));
+  if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
   bulkGraphUpdate(graph, wordFrame, createSingleWordNode);
+  if(verbose) {print(paste(Sys.time(),"Creating synset-word relationships", sep=": "))};
   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
 }
 
@@ -262,8 +263,8 @@ getWordFrame <- function(synsetData){
 transformSynsetDataToWordMap <- function(synsetLine){
   offset<-synsetLine["synsetOffset"];
   pos<-synsetLine["pos"];
-  #words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]),"_"," ");
-  words<-str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]);
+  words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]),"_"," ");
+  #words<-str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]);
   df<-data.frame(synsetOffset=offset, pos=pos, name=words, stringsAsFactors=FALSE, row.names=NULL);
   cbind(df,wordNum=as.numeric(rownames(df)));
 }
@@ -283,12 +284,8 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 # Functions for creating semantic pointers
 #--------------------------------------------------------------------------------------
 
-createSemanticPointers <- function(graph, synsetPointerFrame, verbose=TRUE){
-  if(verbose) {print(paste(Sys.time(),"Creating semantic synset pointers", sep=": "))};
-  bulkGraphUpdate(graph, synsetPointerFrame, createSingleSemanticPointer);
-}
-
 getSynsetPointerFrame <- function(synsetData){
+  print(synsetData[1,3]);
   #convert Synset data into a data frame with x columns: 
   #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
   z<-apply(synsetData[!is.na(synsetData$pointers),], 1, transformSynsetDataToSynPointerMap)
@@ -301,11 +298,19 @@ getSynsetPointerFrame <- function(synsetData){
 transformSynsetDataToSynPointerMap <- function(synsetLine){
   startOffset<-synsetLine["synsetOffset"];
   startPOS<-synsetLine["pos"];
-  pointers<-str_match_all(synsetLine["pointers"], "(\\S{1,2}) (\\d{8}) ([nvasr]) (\\d{2})(\\d{2})")[[1]];
+  print(startOffset);
+  pointers<-str_match_all(synsetLine["pointers"], "(\\S{1,2}) (\\d{8}) ([nvasr]) ([0-9a-f]{2})([0-9a-f]{2})")[[1]];
+  print(pointers)
   data.frame(startOffset=startOffset, startPOS=startPOS, 
              pointerSymbol=pointers[,2], endOffset=pointers[,3], endPOS=pointers[,4],
-             startWordNum=pointers[,5], endWordNum=pointers[,6],
+             startWordNum=strtoi(pointers[,5],16), endWordNum=strtoi(pointers[,6],16),
              stringsAsFactors=FALSE, row.names=NULL);
+}
+
+createSemanticPointers <- function(graph, synsetPointerFrame, verbose=TRUE){
+  if(verbose) {print(paste(Sys.time(),"Creating semantic synset pointers", sep=": "))};
+  #print(nrow(synsetPointerFrame));
+  bulkGraphUpdate(graph, synsetPointerFrame, createSingleSemanticPointer);
 }
 
 createSingleSemanticPointer <- function(transaction, data){
@@ -341,11 +346,13 @@ searchForLexicalWords <- function(pointerLine, wordFrame){
   list(
     startWord=wordFrame[wordFrame$synsetOffset==pointerLine$startOffset & 
                           wordFrame$pos==pointerLine$startPOS & 
-                          wordFrame$wordNum==as.numeric(pointerLine$startWordNum),
+                          #wordFrame$wordNum==as.numeric(pointerLine$startWordNum),
+                          wordFrame$wordNum==pointerLine$startWordNum,
                         "name"],
     endWord=wordFrame[wordFrame$synsetOffset==pointerLine$endOffset & 
                         wordFrame$pos==pointerLine$endPOS & 
-                        wordFrame$wordNum==as.numeric(pointerLine$endWordNum),
+                        #wordFrame$wordNum==as.numeric(pointerLine$endWordNum),
+                        wordFrame$wordNum==pointerLine$endWordNum,
                       "name"]
   );
   

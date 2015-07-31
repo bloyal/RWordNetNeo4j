@@ -36,11 +36,12 @@ runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
     
   #Create semantic pointers
   pointerFrame <- ldply(lapply(testData, getSynsetPointerFrame));
-  createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum=="00",], verbose=verbose);
+  #print(pointerFrame)
+  createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
   unitTest("Semantic pointer count",countRelationshipsByLabel(graph,"has_pointer"),97);
   
   #Create lexical pointers
-  pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!="00",], wordFrame);
+  pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!=0,], wordFrame);
   createLexicalPointers(graph, pointerFrame, verbose=verbose);
   unitTest("Semantic + lexical pointer count",countRelationshipsByLabel(graph,"has_pointer"),131);
   
