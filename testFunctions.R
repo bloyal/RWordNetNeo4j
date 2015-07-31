@@ -28,6 +28,7 @@ runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
   unitTest("Synset-lex file relationship count",countRelationshipsByLabel(graph,"has_lexicographer_file"),128);
   
   #Create word nodes
+  if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
   wordFrame <- ldply(lapply(testData, getWordFrame));
   unitTest("Word data count", nrow(wordFrame),220);
   createWordNodes(graph, wordFrame, verbose=verbose);
@@ -35,6 +36,7 @@ runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
   unitTest("Synset-word relationship count",countRelationshipsByLabel(graph,"has_word"),220);
     
   #Create semantic pointers
+  if(verbose) {print(paste(Sys.time(),"Creating pointer frame", sep=": "))};
   pointerFrame <- ldply(lapply(testData, getSynsetPointerFrame));
   #print(pointerFrame)
   createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
@@ -46,6 +48,7 @@ runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
   unitTest("Semantic + lexical pointer count",countRelationshipsByLabel(graph,"has_pointer"),131);
   
   #Create verb frame relationships
+  if(verbose) {print(paste(Sys.time(),"Creating verb frame frame", sep=": "))};
   verbFrameFrame<- ldply(apply(testData$verb,1,transformSynsetDataToFrameMap));
   createVerbFrameRelationships(graph, verbFrameFrame, verbose=verbose);
   unitTest("Synset-verb frame relationship count",countRelationshipsByLabel(graph,"has_sentence_frame"),33);

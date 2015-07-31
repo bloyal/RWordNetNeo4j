@@ -30,10 +30,12 @@ createWordNetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbos
   createSynsetNodes(graph, wordNetData, verbose=verbose);
   
   #Create words
+  if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
   wordFrame <- ldply(lapply(wordNetData, getWordFrame));
   createWordNodes(graph, wordFrame, verbose=verbose);
   
   #Create semantic pointers
+  if(verbose) {print(paste(Sys.time(),"Creating pointer frame", sep=": "))};
   pointerFrame <- ldply(lapply(wordNetData, getSynsetPointerFrame));
   createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
   
@@ -42,6 +44,7 @@ createWordNetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbos
   createLexicalPointers(graph, pointerFrame, verbose=verbose);
   
   #Create verb frame relationships
+  if(verbose) {print(paste(Sys.time(),"Creating verb frame frame", sep=": "))};
   verbFrameFrame<- ldply(apply(wordNetData$verb,1,transformSynsetDataToFrameMap));
   createVerbFrameRelationships(graph, verbFrameFrame, verbose=verbose);
   
