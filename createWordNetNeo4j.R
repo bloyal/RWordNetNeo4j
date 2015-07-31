@@ -87,7 +87,7 @@ getLexDescriptions <- function(path="lexFileLookup.csv"){
 }
 
 createSingleLexNode  <- function(transaction, data){
-  query <- "MERGE (:LexName {
+  query <- "CREATE (:LexName {
                       fileNumber:{fileNumber},
                       fileName:{fileName},
                       synCat:{synCat},
@@ -112,7 +112,7 @@ createFrameNodes <- function(graph, verbose=TRUE){
 }
 
 createSingleVerbFrame  <- function(transaction, data){
-  query <- "MERGE (:VerbFrame {
+  query <- "CREATE (:VerbFrame {
                       number:{number},
                       sentenceFrame:{sentenceFrame}
                     })";  
@@ -220,7 +220,7 @@ createPOSSpecificSynsetNodes <- function(synsetData, graph, verbose=TRUE){
 }
 
 createSingleSynsetNode  <- function(transaction, data){
-  query <- "MERGE (:Synset {
+  query <- "CREATE (:Synset {
   synsetOffset:{synsetOffset},
   lexFilenum:{lexFilenum},
   lexFileName:{lexFileName},
@@ -241,7 +241,7 @@ createSingleSynsetNode  <- function(transaction, data){
 
 createSingleSynsetLexRelationship <- function(transaction, data){
   query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}, pos:{pos}}), (b:LexName {fileNumber:{fileNumber}})
-  MERGE (a)-[:has_lexicographer_file]->(b)";  
+  CREATE (a)-[:has_lexicographer_file]->(b)";  
   appendCypher(transaction, query, 
                synsetOffset = data$synsetOffset, pos = data$pos, fileNumber = as.numeric(data$lexFilenum));
 }
@@ -282,7 +282,7 @@ createSingleWordNode <- function(transaction, data){
 
 createSingleSynsetWordRelationship <- function(transaction, data){
   query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}, pos:{pos}}), (b:Word {name:{name}})
-  MERGE (a)-[:has_word {wordNum:{wordNum}}]->(b)";  
+  CREATE (a)-[:has_word {wordNum:{wordNum}}]->(b)";  
   appendCypher(transaction, query, synsetOffset = data$synsetOffset, pos = data$pos, name = data$name, wordNum = data$wordNum);
 }
 
@@ -323,7 +323,7 @@ createSemanticPointers <- function(graph, synsetPointerFrame, verbose=TRUE){
 createSingleSemanticPointer <- function(transaction, data){
   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), 
               (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
-            MERGE (a)-[:has_pointer {relation:'Semantic', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
+            CREATE (a)-[:has_pointer {relation:'Semantic', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
   appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
                endOffset = data$endOffset, endPOS = data$startPOS,
                pointerSymbol = data$pointerSymbol, pointerType = data$pointerType);
@@ -372,7 +372,7 @@ createLexicalPointers <- function(graph, lexPointerFrame, verbose=TRUE){
 
 createSingleLexicalPointer <- function(transaction, data){
   query <- "MATCH (a:Word {name:{startWord}}), (b:Word {name:{endWord}})
-            MERGE (a)-[:has_pointer {relation:'Lexical', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
+            CREATE (a)-[:has_pointer {relation:'Lexical', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
   appendCypher(transaction, query, startWord = data$startWord, endWord = data$endWord,
                pointerSymbol = data$pointerSymbol, pointerType = data$pointerType);
 }
@@ -411,14 +411,14 @@ transformSynsetDataToFrameMap <- function(synsetLine){
 
 createSingleSynsetFrameRelationship <- function(transaction, data){
   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:VerbFrame {number:{frameNumber}})
-            MERGE (a)-[:has_sentence_frame {synsetOffset:{startOffset}, synsetPOS:{startPOS}}]->(b)";  
+            CREATE (a)-[:has_sentence_frame {synsetOffset:{startOffset}, synsetPOS:{startPOS}}]->(b)";  
   appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
                frameNumber = data$frameNumber)
 }
 
 createSingleWordFrameRelationship <- function(transaction, data){
   query <- "MATCH (a:Word {name:{name}}), (b:VerbFrame {number:{frameNumber}})
-            MERGE (a)-[:has_sentence_frame {synsetOffset:{synsetOffset}, synsetPOS:{synsetPOS}}]->(b)";  
+            CREATE (a)-[:has_sentence_frame {synsetOffset:{synsetOffset}, synsetPOS:{synsetPOS}}]->(b)";  
   appendCypher(transaction, query, 
                name = data$word, frameNumber = data$frameNumber,
                synsetOffset = data$startOffset, synsetPOS = data$startPOS);
