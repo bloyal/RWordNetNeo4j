@@ -137,6 +137,9 @@ readVerbData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
   verbData<-readPosDataFile(path);
   #For verbs, need special step to remove frame from end of pointers and remove space from front of frames!
   removeFramesFromPointers(verbData);
+  #Also need to make sure that pointer field is empty when pCnt=0
+  verbData[verbData$pCnt==0,"pointers"] = "";
+  return(verbData);
 }
 
 removeFramesFromPointers<-function(verbData){
@@ -285,10 +288,11 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 #--------------------------------------------------------------------------------------
 
 getSynsetPointerFrame <- function(synsetData){
-  print(synsetData[1,3]);
+  #print(synsetData[1,3]);
   #convert Synset data into a data frame with x columns: 
   #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
-  z<-apply(synsetData[!is.na(synsetData$pointers),], 1, transformSynsetDataToSynPointerMap)
+  #z<-apply(synsetData[!is.na(synsetData$pointers),], 1, transformSynsetDataToSynPointerMap)
+  z<-apply(synsetData[synsetData$pCnt>0,], 1, transformSynsetDataToSynPointerMap)
   z<-ldply(z);
   cbind(z, pointerType = translateMultiPointerSymbols(z$pointerSymbol, z$startPOS), stringsAsFactors = FALSE);
 }
@@ -298,9 +302,9 @@ getSynsetPointerFrame <- function(synsetData){
 transformSynsetDataToSynPointerMap <- function(synsetLine){
   startOffset<-synsetLine["synsetOffset"];
   startPOS<-synsetLine["pos"];
-  print(startOffset);
+  #print(startOffset);
   pointers<-str_match_all(synsetLine["pointers"], "(\\S{1,2}) (\\d{8}) ([nvasr]) ([0-9a-f]{2})([0-9a-f]{2})")[[1]];
-  print(pointers)
+  #print(pointers)
   data.frame(startOffset=startOffset, startPOS=startPOS, 
              pointerSymbol=pointers[,2], endOffset=pointers[,3], endPOS=pointers[,4],
              startWordNum=strtoi(pointers[,5],16), endWordNum=strtoi(pointers[,6],16),
