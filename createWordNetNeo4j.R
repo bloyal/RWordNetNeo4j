@@ -392,25 +392,25 @@ createVerbFrameRelationships <- function (graph, verbFrameFrame, verbose){
 transformSynsetDataToFrameMap <- function(synsetLine){
   startOffset<-synsetLine["synsetOffset"];
   startPOS<-synsetLine["pos"];
-  frames<-ldply(strsplit(str_match_all(synsetLine["frames"], "(\\d{2} \\d{2})")[[1]][,1]," "));
+  #print(startOffset);
+  frames<-ldply(strsplit(str_match_all(synsetLine["frames"], "(\\d{2} [0-9a-f]{2})")[[1]][,1]," "));
   frameFrame<-data.frame(startOffset=startOffset, startPOS=startPOS, 
-             frameNumber=as.numeric(frames$V1), wordNum=as.numeric(frames$V2),
+             frameNumber=as.numeric(frames$V1), wordNum=strtoi(frames$V2,16),
              stringsAsFactors=FALSE, row.names=NULL);
   
-  word<-apply(frameFrame, 1, function(x){
-    if(x["wordNum"] == 0){""}
-    else{
-      getWordByNumber(synsetLine[["words"]], x[["wordNum"]])
+  word<-apply(frameFrame, 1,function(x){
+    ifelse(x["wordNum"] == 0,"",getWordByNumber(synsetLine[["words"]], x[["wordNum"]]))
     }
-  })
-  cbind(frameFrame, word);
+  )
+  #word<-ldply(word);
+  cbind(frameFrame, word=word,stringsAsFactors=FALSE);
 }
 
 createSingleSynsetFrameRelationship <- function(transaction, data){
   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:VerbFrame {number:{frameNumber}})
             MERGE (a)-[:has_sentence_frame {synsetOffset:{startOffset}, synsetPOS:{startPOS}}]->(b)";  
   appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
-               frameNumber = data$frameNumber, word = data$word)
+               frameNumber = data$frameNumber)
 }
 
 createSingleWordFrameRelationship <- function(transaction, data){
@@ -532,5 +532,6 @@ translateSynsetPointerSymbol <- function(input){
 getWordByNumber <- function(synsetWords, wordNum){
   words<-strsplit(synsetWords,"\\s")[[1]];
   convertedWordNum <- ceiling(as.numeric(wordNum) / 2);
+  convertedWordNum <- (as.numeric(wordNum) * 2)-1;
   words[convertedWordNum];
 }
