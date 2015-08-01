@@ -2,7 +2,7 @@
 #source('createWordNetNeo4j.R');
 
 #--------------
-runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
+runIntegrationTests <-function(dictPath="./testData", verbose=TRUE){
   
   #Initiate graph
   graph<-newGraph(username="neo4j", password="graph");
@@ -40,12 +40,12 @@ runIntegrationTests <-function(dictPath="./testData", verbose=FALSE){
   pointerFrame <- ldply(lapply(testData, getSynsetPointerFrame));
   #print(pointerFrame)
   createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
-  unitTest("Semantic pointer count",countRelationshipsByLabel(graph,"has_pointer"),97);
+  unitTest("Semantic pointer count",countRelationshipsByLabel(graph,"has_pointer"),122);
   
   #Create lexical pointers
   pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!=0,], wordFrame);
   createLexicalPointers(graph, pointerFrame, verbose=verbose);
-  unitTest("Semantic + lexical pointer count",countRelationshipsByLabel(graph,"has_pointer"),131);
+  unitTest("Semantic + lexical pointer count",countRelationshipsByLabel(graph,"has_pointer"),156);
   
   #Create verb frame relationships
   if(verbose) {print(paste(Sys.time(),"Creating verb frame frame", sep=": "))};
