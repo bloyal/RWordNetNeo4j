@@ -31,7 +31,7 @@ createWordNetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbos
   
   #Create words
   if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
-  wordFrame<- readPOSWordIndex( "./testData2", verbose=TRUE)
+  wordFrame<- readPOSWordIndex( dictPath, verbose=TRUE)
   createWordNodes(graph, wordFrame, verbose=verbose);
 #   if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
 #   wordFrame <- ldply(lapply(wordNetData, getWordFrame));
@@ -313,16 +313,18 @@ processWordData <- function(wordData,posCode){
 createWordNodes <- function(graph, wordFrame, verbose=TRUE){
   #addIndex(graph, "Word", "name");
   #print(typeof(wordFrame));
-  print(wordFrame);
+  #print(wordFrame);
   if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
-  bulkGraphUpdate(graph, wordFrame, createSingleWordNode);
+  bulkGraphUpdate(graph, data.frame(name=unique(wordFrame$name,stringsAsFactors=FALSE)), createSingleWordNode);
   if(verbose) {print(paste(Sys.time(),"Creating synset-word relationships", sep=": "))};
   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
 }
 
 createSingleWordNode <- function(transaction, data){
-  query <- "MERGE (:Word {name:{name}})";  
-  appendCypher(transaction, query, name = data$name);
+  #print(data);
+  query <- "CREATE (:Word {name:{name}})";  
+  #appendCypher(transaction, query, name = data$name);
+  appendCypher(transaction, query, name = data);
 }
 
 createSingleSynsetWordRelationship <- function(transaction, data){

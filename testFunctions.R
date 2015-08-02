@@ -29,9 +29,9 @@ runIntegrationTests <-function(dictPath="./testData", verbose=TRUE){
   
   #Create word nodes
   if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
-  wordFrame <- ldply(lapply(testData, getWordFrame));
-  unitTest("Word data count", nrow(wordFrame),220);
+  wordFrame<- readPOSWordIndex( "./testData2", verbose=TRUE)
   createWordNodes(graph, wordFrame, verbose=verbose);
+  unitTest("Word data count", nrow(wordFrame),220);
   unitTest("Word node count", countNodesbyLabel(graph, "Word"),206);
   unitTest("Synset-word relationship count",countRelationshipsByLabel(graph,"has_word"),220);
     
