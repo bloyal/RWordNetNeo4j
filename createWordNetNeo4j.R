@@ -35,6 +35,10 @@ createWordNetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbos
   if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
   createWordNodes(graph, wordFrame, verbose=verbose);
   
+  #DELETE ME!!!!!!
+  if(verbose) {print(paste(Sys.time(),"Creating synset-word relationships", sep=": "))};
+  bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
+  
   #Create semantic pointers
   if(verbose) {print(paste(Sys.time(),"Creating pointer frame", sep=": "))};
   pointerFrame <- ldply(lapply(wordNetData, getSynsetPointerFrame));
@@ -313,7 +317,7 @@ processWordData <- function(wordData,posCode){
 }
 
 createWordNodes <- function(graph, wordFrame, verbose=TRUE){
-  #addIndex(graph, "Word", "name");
+  addIndex(graph, "Word", "name");
   #print(typeof(wordFrame));
   #print(wordFrame);
   if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
