@@ -30,17 +30,19 @@ createWordNetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbos
   createSynsetNodes(graph, wordNetData, verbose=verbose);
   
   #Create words
-  if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
-  wordFrame<- readPOSWordIndex( dictPath, verbose=TRUE)
+  if(verbose) {print(paste(Sys.time(),"Reading word data", sep=": "))};
+  wordFrame<- readPOSWordIndex(dictPath, verbose=verbose)
+  if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
   createWordNodes(graph, wordFrame, verbose=verbose);
-#   if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
-#   wordFrame <- ldply(lapply(wordNetData, getWordFrame));
-#   createWordNodes(graph, wordFrame, verbose=verbose);
   
   #Create semantic pointers
   if(verbose) {print(paste(Sys.time(),"Creating pointer frame", sep=": "))};
   pointerFrame <- ldply(lapply(wordNetData, getSynsetPointerFrame));
   createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
+  
+  if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
+  wordFrame <- ldply(lapply(wordNetData, getWordFrame));
+#  createWordNodes(graph, wordFrame, verbose=verbose);
   
   #Create lexical pointers
   pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!=0,], wordFrame);
@@ -268,19 +270,19 @@ readPOSWordIndex <- function(dictPath, verbose=TRUE){
 }
 
 readAdvWordData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
-  if(verbose) {print(paste(Sys.time(),"Reading noun word data", sep=": "))};
+  if(verbose) {print(paste(Sys.time(),"Reading adverb word data", sep=": "))};
   path<-paste(path,"index.adv",sep="/")
   readPosWordDataFile(path,"r");
 }
 
 readVerbWordData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
-  if(verbose) {print(paste(Sys.time(),"Reading noun word data", sep=": "))};
+  if(verbose) {print(paste(Sys.time(),"Reading verb word data", sep=": "))};
   path<-paste(path,"index.verb",sep="/")
   readPosWordDataFile(path, "v");
 }
 
 readAdjWordData <- function(path="~/Downloads/WordNet-3.0/dict", verbose=TRUE){
-  if(verbose) {print(paste(Sys.time(),"Reading noun word data", sep=": "))};
+  if(verbose) {print(paste(Sys.time(),"Reading adjective word data", sep=": "))};
   path<-paste(path,"index.adj",sep="/")
   readPosWordDataFile(path, "a");
 }
@@ -338,7 +340,7 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 
 
 #--------------------------------------------------------------------------------------
-# Functions for creating word nodes
+# Functions for creating word frame for lexical pointers
 #--------------------------------------------------------------------------------------
 # 
 # createWordNodes <- function(graph, wordFrame, verbose=TRUE){
@@ -350,22 +352,22 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 #   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
 # }
 # 
-# #Create word frame
-# getWordFrame <- function(synsetData){
-#   z<-apply(synsetData, 1, transformSynsetDataToWordMap)
-#   ldply(z)
-# }
-# 
+#Create word frame
+getWordFrame <- function(synsetData){
+  z<-apply(synsetData, 1, transformSynsetDataToWordMap)
+  ldply(z)
+}
+
 # #process single line of synset data (inside apply) to create a narrow data frame with the offset and words
-# transformSynsetDataToWordMap <- function(synsetLine){
-#   offset<-synsetLine["synsetOffset"];
-#   pos<-synsetLine["pos"];
-#   words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]),"_"," ");
-#   #words<-str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]);
-#   #df<-data.frame(synsetOffset=offset, pos=pos, name=words, stringsAsFactors=FALSE, row.names=NULL);
-#   df<-data.frame(synsetId=calcSynsetId(offset, pos), name=words, stringsAsFactors=FALSE, row.names=NULL);
-#   cbind(df,wordNum=as.numeric(rownames(df)));
-# }
+transformSynsetDataToWordMap <- function(synsetLine){
+  offset<-synsetLine["synsetOffset"];
+  pos<-synsetLine["pos"];
+  words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]),"_"," ");
+  #words<-str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]);
+  #df<-data.frame(synsetOffset=offset, pos=pos, name=words, stringsAsFactors=FALSE, row.names=NULL);
+  df<-data.frame(synsetId=calcSynsetId(offset, pos), name=words, stringsAsFactors=FALSE, row.names=NULL);
+  cbind(df,wordNum=as.numeric(rownames(df)));
+}
 # 
 # createSingleWordNode <- function(transaction, data){
 #   query <- "MERGE (:Word {name:{name}})";  
