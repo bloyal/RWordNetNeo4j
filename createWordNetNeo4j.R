@@ -79,14 +79,17 @@ createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
 createLexNodes <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE) {
   if(verbose) {print(paste(Sys.time(),"Creating lexicographer file nodes", sep=": "))};
-  lexData <- getLexNames(dictPath, verbose);
+  #lexData <- getLexNames(dictPath, verbose);
+  lexData <- getLexNames(verbose);
   addIndex(graph,"LexName","fileNumber");
   bulkGraphUpdate(graph, lexData, createSingleLexNode);
 }
 
-getLexNames <- function(dictPath, verbose){
+#getLexNames <- function(dictPath, verbose){
+getLexNames <- function(verbose){
   if(verbose) {print(paste(Sys.time(),"Retrieving lex file names", sep=": "))};
-  lexData<-read.table(paste(dictPath,"lexnames", sep="/"), sep="\t", col.names=c("fileNumber","fileName","synCat"),stringsAsFactors=FALSE);
+  #lexData<-read.table(paste(dictPath,"lexnames", sep="/"), sep="\t", col.names=c("fileNumber","fileName","synCat"),stringsAsFactors=FALSE);
+  lexData<-read.table("lexnames", sep="\t", col.names=c("fileNumber","fileName","synCat"),stringsAsFactors=FALSE);
   lexData$synCat <- updateSynCat(lexData$synCat);
   lexData["description"] <- getLexDescriptions();
   return(lexData);
