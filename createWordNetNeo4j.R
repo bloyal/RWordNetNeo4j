@@ -432,7 +432,7 @@ createSingleSemanticPointer <- function(transaction, data){
 #               (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
 #             CREATE (a)-[:has_pointer {relation:'Semantic', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
   query <- "MATCH (a:Synset {synsetId:{startId}}), (b:Synset {synsetId:{endId}})
-  CREATE (a)-[:has_pointer {relation:'Semantic', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
+  CREATE (a)-[:has_pointer {relation:'Semantic', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}, synsetId:{startId}}]->(b)";  
   
   appendCypher(transaction, query, startId = data$startId, endId = data$endId,
                pointerSymbol = data$pointerSymbol, pointerType = data$pointerType);
@@ -488,7 +488,7 @@ createLexicalPointers <- function(graph, lexPointerFrame, verbose=TRUE){
 
 createSingleLexicalPointer <- function(transaction, data){
   query <- "MATCH (a:Word {name:{startWord}}), (b:Word {name:{endWord}})
-            CREATE (a)-[:has_pointer {relation:'Lexical', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
+            CREATE (a)-[:has_pointer {relation:'Lexical', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}, synsetId:{startId}}]->(b)";  
   appendCypher(transaction, query, startWord = data$startWord, endWord = data$endWord,
                pointerSymbol = data$pointerSymbol, pointerType = data$pointerType);
 }
