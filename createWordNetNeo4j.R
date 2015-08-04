@@ -443,6 +443,9 @@ createSingleSemanticPointer <- function(transaction, data){
 #--------------------------------------------------------------------------------------
 
 getLexicalPointerWords <- function(pointerFrame, wordFrame){
+  #Remove derivationally-derived form pointers (These cause lexical pointers that loop back on themselves without any value)
+  pointerFrame<-pointerFrame[pointerFrame$pointerSymbol!="+",];
+  
   #Add empty columns for start and end words
   pointerFrame<-cbind(pointerFrame, startWord = rep("",nrow(pointerFrame)), endWord = rep("",nrow(pointerFrame)), stringsAsFactors=FALSE);
   
