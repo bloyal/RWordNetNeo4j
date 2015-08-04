@@ -8,16 +8,27 @@ library(stringr);
 library(plyr);
 source('genericGraphFunctions.R');
 source('testFunctions.R');
+source('downloadWordNetFiles.R');
 #--------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------
 
 #runIntegrationTests();
 
-createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose=TRUE){
+downloadAndCreateWordNetGraph <- function(
+    url="http://wordnetcode.princeton.edu/wn3.1.dict.tar.gz",
+    dest=getwd(), 
+    username="neo4j",
+    password="graph",
+    verbose=TRUE){
+  dictPath<-downloadWordNetFiles(url=url, dest=dest, verbose=verbose);
+  createWordNetGraph(dictPath=dictPath, verbose=verbose);
+}
+
+createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose=TRUE, username="neo4j", password="graph"){
   if(verbose) {print(paste(Sys.time(),"Starting graph creation", sep=": "))};
   if(verbose) {print(paste(Sys.time(),"Clearing Neo4j data", sep=": "))};
   #Initialize graph
-  graph<-newGraph(username="neo4j", password="graph");
+  graph<-newGraph(username=username, password=password);
   
   #Create nodes representing the 45 lexicographer file names
   createLexNodes(graph, dictPath, verbose=verbose);
