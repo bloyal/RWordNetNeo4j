@@ -13,7 +13,7 @@ source('testFunctions.R');
 
 #runIntegrationTests();
 
-createWordNetGraph <- function(dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE){
+createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose=TRUE){
   if(verbose) {print(paste(Sys.time(),"Starting graph creation", sep=": "))};
   if(verbose) {print(paste(Sys.time(),"Clearing Neo4j data", sep=": "))};
   #Initialize graph
