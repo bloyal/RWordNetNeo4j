@@ -47,8 +47,8 @@ createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose
   createWordNodes(graph, wordFrame, verbose=verbose);
   
   #DELETE ME!!!!!!
-  if(verbose) {print(paste(Sys.time(),"Creating synset-word relationships", sep=": "))};
-  bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
+#   if(verbose) {print(paste(Sys.time(),"Creating synset-word relationships", sep=": "))};
+#   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
   
   #Create semantic pointers
   if(verbose) {print(paste(Sys.time(),"Creating pointer frame", sep=": "))};
@@ -262,7 +262,7 @@ createSingleSynsetNode  <- function(transaction, data){
                synsetOffset = data$synsetOffset,lexFilenum = data$lexFilenum,
                lexFileName = data$lexFileName,pos = data$pos,
                posName = data$posName,wCnt = data$wCnt,
-               pCnt = data$pCnt,gloss = data$gloss,words = data$words
+               pCnt = data$pCnt,gloss = data$gloss,words = convertWordsToCommaDelimitedList(data$words)
                );
   }
 
@@ -412,9 +412,10 @@ getSynsetPointerFrame <- function(synsetData){
   #z<-apply(synsetData[!is.na(synsetData$pointers),], 1, transformSynsetDataToSynPointerMap)
   z<-apply(synsetData[synsetData$pCnt>0,], 1, transformSynsetDataToSynPointerMap)
   z<-ldply(z);
-  cbind(z, pointerType = translateMultiPointerSymbols(z$pointerSymbol, z$startPOS), stringsAsFactors = FALSE);
+#   #remove this assignment - i was using it for troubleshooting on tuesday morning
+#   x<-translateMultiPointerSymbols(z$pointerSymbol, z$endPOS) #Why is this missing 3 records?
+  y<-cbind(z, pointerType = translateMultiPointerSymbols(z$pointerSymbol, z$endPOS), stringsAsFactors = FALSE);
 }
-#Note: Follow this up and add startPOS back in !
 
 #process single line of synset data (inside apply) to create a narrow data frame with x columns: 
 #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
@@ -424,13 +425,14 @@ transformSynsetDataToSynPointerMap <- function(synsetLine){
   startId<-calcSynsetId(synsetLine["synsetOffset"], synsetLine["pos"]);
   #print(startOffset);
   pointers<-str_match_all(synsetLine["pointers"], "(\\S{1,2}) (\\d{8}) ([nvasr]) ([0-9a-f]{2})([0-9a-f]{2})")[[1]];
+  endPOS<-pointers[,4];
   endId<-calcSynsetId(pointers[,3], pointers[,4]);
   #print(pointers)
 #   data.frame(startOffset=startOffset, startPOS=startPOS, 
 #              pointerSymbol=pointers[,2], endOffset=pointers[,3], endPOS=pointers[,4],
 #              startWordNum=strtoi(pointers[,5],16), endWordNum=strtoi(pointers[,6],16),
 #              stringsAsFactors=FALSE, row.names=NULL);
-  data.frame(startId=startId, pointerSymbol=pointers[,2], endId=endId, startPOS=startPOS,
+  data.frame(startId=startId, pointerSymbol=pointers[,2], endId=endId, startPOS=startPOS,endPOS=endPOS,
              startWordNum=strtoi(pointers[,5],16), endWordNum=strtoi(pointers[,6],16),
              stringsAsFactors=FALSE, row.names=NULL);
 }
@@ -568,6 +570,13 @@ createSingleWordFrameRelationship <- function(transaction, data){
 # Miscellaneous functions
 #--------------------------------------------------------------------------------------
 
+convertWordsToCommaDelimitedList <- function(words){
+  #print(words);
+  str<-strsplit(words," ")[[1]];
+  str<-str[seq(1, length(str), 2)]
+  paste(str, collapse=", ");
+}
+
 findSynsetData <- function(offset, data){
   data[grep(paste("^",offset, " .*",sep=""),data)]
 }
@@ -648,7 +657,9 @@ translateLexFilenum <- function(lexFilenum){
 
 translateMultiPointerSymbols <- function(symbolVector, posVector){
   input <- data.frame(symbol = symbolVector, pos = posVector, stringsAsFactors = FALSE);
+  #print(nrow(input));
   unlist(apply(input, 1, translateSynsetPointerSymbol));
+  #apply(input, 1, translateSynsetPointerSymbol);
 }
 
 translateSynsetPointerSymbol <- function(input){
@@ -683,6 +694,7 @@ translateSynsetPointerSymbol <- function(input){
   else if(input["symbol"]=="="){"Attribute"}
   else if(input["symbol"]==">"){"Cause"}
   else if(input["symbol"]=="$"){"Verb Group"}
+  else{"Other"}
 }
 
 getWordByNumber <- function(synsetWords, wordNum){
