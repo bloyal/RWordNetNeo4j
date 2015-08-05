@@ -406,7 +406,7 @@ transformSynsetDataToWordMap <- function(synsetLine){
 #--------------------------------------------------------------------------------------
 
 getSynsetPointerFrame <- function(synsetData){
-  #print(synsetData[1,3]);
+  #print(synsetData[1,5]);
   #convert Synset data into a data frame with x columns: 
   #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
   #z<-apply(synsetData[!is.na(synsetData$pointers),], 1, transformSynsetDataToSynPointerMap)
@@ -414,7 +414,7 @@ getSynsetPointerFrame <- function(synsetData){
   z<-ldply(z);
 #   #remove this assignment - i was using it for troubleshooting on tuesday morning
 #   x<-translateMultiPointerSymbols(z$pointerSymbol, z$endPOS) #Why is this missing 3 records?
-  y<-cbind(z, pointerType = translateMultiPointerSymbols(z$pointerSymbol, z$endPOS), stringsAsFactors = FALSE);
+  y<-cbind(z, pointerType = translateMultiPointerSymbols(z$pointerSymbol, z$startPOS), stringsAsFactors = FALSE);
 }
 
 #process single line of synset data (inside apply) to create a narrow data frame with x columns: 
@@ -664,37 +664,40 @@ translateMultiPointerSymbols <- function(symbolVector, posVector){
 
 translateSynsetPointerSymbol <- function(input){
   if(input["symbol"]=='\\'){
-    switch(input["pos"],
+    output<-switch(input["pos"],
            a = "Pertainym (Pertains to Noun)",
            s = "Pertainym (Pertains to Noun)",
-           r = "Derived from Adjective")
+           r = "Derived from Adjective",
+           n = "Derivationally Related Form")
   }
-  else if(input["symbol"]=="!"){"Antonym"}
-  else if(input["symbol"]=="~"){"Hyponym"}
-  else if(input["symbol"]=="~i"){"Instance Hyponym"}
-  else if(input["symbol"]=="-c"){"Member of this Domain - TOPIC"}
-  else if(input["symbol"]=="-r"){"Member of this Domain - REGION"}
-  else if(input["symbol"]=="-u"){"Member of this Domain - USAGE"}
-  else if(input["symbol"]==";c"){"Domain of Synset - TOPIC"}
-  else if(input["symbol"]==";r"){"Domain of Synset - REGION"}
-  else if(input["symbol"]==";u"){"Domain of Synset - USAGE"}
-  else if(input["symbol"]=="@"){"Hypernym"}
-  else if(input["symbol"]=="@i"){"Instance Hypernym"}
-  else if(input["symbol"]=="*"){"Entailment"}
-  else if(input["symbol"]=="&"){"Similar To"}
-  else if(input["symbol"]=="#m"){"Member Holonym"}
-  else if(input["symbol"]=="#p"){"Part Holonym"}
-  else if(input["symbol"]=="#s"){"Substance Holonym"}
-  else if(input["symbol"]=="%m"){"Member Meronym"}
-  else if(input["symbol"]=="%p"){"Part Meronym"}
-  else if(input["symbol"]=="%s"){"Substance Meronym"}
-  else if(input["symbol"]=="^"){"Also See"}
-  else if(input["symbol"]=="+"){"Derivationally Related Form"}
-  else if(input["symbol"]=="<"){"Participle of Verb"}
-  else if(input["symbol"]=="="){"Attribute"}
-  else if(input["symbol"]==">"){"Cause"}
-  else if(input["symbol"]=="$"){"Verb Group"}
-  else{"Other"}
+  else if(input["symbol"]=="!"){output<-"Antonym"}
+  else if(input["symbol"]=="~"){output<-"Hyponym"}
+  else if(input["symbol"]=="~i"){output<-"Instance Hyponym"}
+  else if(input["symbol"]=="-c"){output<-"Member of this Domain - TOPIC"}
+  else if(input["symbol"]=="-r"){output<-"Member of this Domain - REGION"}
+  else if(input["symbol"]=="-u"){output<-"Member of this Domain - USAGE"}
+  else if(input["symbol"]==";c"){output<-"Domain of Synset - TOPIC"}
+  else if(input["symbol"]==";r"){output<-"Domain of Synset - REGION"}
+  else if(input["symbol"]==";u"){output<-"Domain of Synset - USAGE"}
+  else if(input["symbol"]=="@"){output<-"Hypernym"}
+  else if(input["symbol"]=="@i"){output<-"Instance Hypernym"}
+  else if(input["symbol"]=="*"){output<-"Entailment"}
+  else if(input["symbol"]=="&"){output<-"Similar To"}
+  else if(input["symbol"]=="#m"){output<-"Member Holonym"}
+  else if(input["symbol"]=="#p"){output<-"Part Holonym"}
+  else if(input["symbol"]=="#s"){output<-"Substance Holonym"}
+  else if(input["symbol"]=="%m"){output<-"Member Meronym"}
+  else if(input["symbol"]=="%p"){output<-"Part Meronym"}
+  else if(input["symbol"]=="%s"){output<-"Substance Meronym"}
+  else if(input["symbol"]=="^"){output<-"Also See"}
+  else if(input["symbol"]=="+"){output<-"Derivationally Related Form"}
+  else if(input["symbol"]=="<"){output<-"Participle of Verb"}
+  else if(input["symbol"]=="="){output<-"Attribute"}
+  else if(input["symbol"]==">"){output<-"Cause"}
+  else if(input["symbol"]=="$"){output<-"Verb Group"}
+  else{output<-"Other"}
+  #if (is.null(output)){print(paste(input["pos"],input["symbol"]))}
+  return(output);
 }
 
 getWordByNumber <- function(synsetWords, wordNum){
