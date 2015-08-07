@@ -1,57 +1,68 @@
 #createWordNetNeo4j.R Test Functions
 #source('createWordNetNeo4j.R');
+library(testthat);
 
 #--------------
-runIntegrationTests <-function(dictPath="./testData", verbose=TRUE){
+runIntegrationTests <-function(dictPath="./newTestData", verbose=FALSE){
   
-  #Initiate graph
   graph<-newGraph(username="neo4j", password="graph");
-  
-  #Create lex nodes
-  createLexNodes(graph, dictPath, verbose=verbose);
-  unitTest("Lexicographer node count", countNodesbyLabel(graph, "LexName"),45);
-  
-  #Create frame nodes
-  createFrameNodes(graph, verbose=verbose);
-  unitTest("Verb frame node count", countNodesbyLabel(graph, "VerbFrame"),35);
-  
-  #Load in POS test data
-  testData<-readPOSdata(dictPath, verbose);
-  unitTest("Noun data count", nrow(testData$noun),27);
-  unitTest("Verb data count", nrow(testData$verb),26);
-  unitTest("Adjective data count", nrow(testData$adj),50);
-  unitTest("Adverb data count", nrow(testData$adv),25);
-  
-  #Create synset nodes
-  createSynsetNodes(graph, testData, verbose=verbose);
-  unitTest("Synset node count", countNodesbyLabel(graph, "Synset"),128);
-  unitTest("Synset-lex file relationship count",countRelationshipsByLabel(graph,"has_lexicographer_file"),128);
-  
-  #Create word nodes
-  if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
-  wordFrame<- readPOSWordIndex( "./testData2", verbose=TRUE)
-  createWordNodes(graph, wordFrame, verbose=verbose);
-  unitTest("Word data count", nrow(wordFrame),220);
-  unitTest("Word node count", countNodesbyLabel(graph, "Word"),206);
-  unitTest("Synset-word relationship count",countRelationshipsByLabel(graph,"has_word"),220);
+
+  context("Lex Nodes")
+  test_that("All 45 lexicographer nodes have been creates",{
+    createLexNodes(graph, dictPath, verbose=verbose);
+    expect_that(countNodesbyLabel(graph, "LexName"), equals(45))
+  })
     
-  #Create semantic pointers
-  if(verbose) {print(paste(Sys.time(),"Creating pointer frame", sep=": "))};
-  pointerFrame <- ldply(lapply(testData, getSynsetPointerFrame));
-  #print(pointerFrame)
-  createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
-  unitTest("Semantic pointer count",countRelationshipsByLabel(graph,"has_pointer"),122);
+  context("Verb Frames")
+  test_that("All 35 verb frame nodes have been creates",{
+    createFrameNodes(graph, verbose=verbose);
+    expect_that(countNodesbyLabel(graph, "VerbFrame"), equals(35))
+  })
   
-  #Create lexical pointers
-  pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!=0,], wordFrame);
-  createLexicalPointers(graph, pointerFrame, verbose=verbose);
-  unitTest("Semantic + lexical pointer count",countRelationshipsByLabel(graph,"has_pointer"),156);
+  context("POS Data")
+  test_that("POS data is read in correctly",{
+    wordNetData <- readPOSdata(dictPath, verbose); 
+    expect_that(nrow(wordNetData$noun), equals(3));
+    expect_that(nrow(wordNetData$verb), equals(3))
+    expect_that(nrow(wordNetData$adj), equals(3))
+    expect_that(nrow(wordNetData$adv), equals(2))
+  })
+
+  context("Synset Nodes")
+  test_that("Synset nodes are created correctly",{
+    createSynsetNodes(graph, wordNetData, verbose=verbose);
+    expect_that(countNodesbyLabel(graph, "Synset"), equals(11));
+    expect_that(countRelationshipsByLabel(graph,"has_lexicographer_file"), equals(11))
+  })
   
-  #Create verb frame relationships
-  if(verbose) {print(paste(Sys.time(),"Creating verb frame frame", sep=": "))};
-  verbFrameFrame<- ldply(apply(testData$verb,1,transformSynsetDataToFrameMap));
-  createVerbFrameRelationships(graph, verbFrameFrame, verbose=verbose);
-  unitTest("Synset-verb frame relationship count",countRelationshipsByLabel(graph,"has_sentence_frame"),33);
+  context("Word Nodes")
+  test_that("Word nodes are created correctly",{
+    wordFrame<- readPOSWordIndex(dictPath, verbose=verbose)
+    createWordNodes(graph, wordFrame, verbose=verbose);
+    expect_that(nrow(wordFrame), equals(59));
+    expect_that(countNodesbyLabel(graph, "Word"), equals(16));
+    expect_that(countRelationshipsByLabel(graph,"has_synset"), equals(14));
+  })
+
+  context("Semantic Pointers")
+  test_that("Semantic pointers are created correctly",{
+    pointerFrame <- ldply(lapply(wordNetData, getSynsetPointerFrame));
+    createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
+    expect_that(countRelationshipsByLabel(graph,"has_pointer"), equals(6));
+  })
+
+  test_that("Lexical pointers are created correctly",{
+    wordFrame <- ldply(lapply(wordNetData, getWordFrame));
+    pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!=0,], wordFrame);
+    createLexicalPointers(graph, pointerFrame, verbose=verbose);
+    expect_that(countRelationshipsByLabel(graph,"has_pointer"), equals(9));
+  })
+
+  test_that("Verb frame nodes  are created correctly",{
+    verbFrameFrame<- ldply(apply(wordNetData$verb,1,transformSynsetDataToFrameMap));
+    createVerbFrameRelationships(graph, verbFrameFrame, verbose=verbose);
+    expect_that(countRelationshipsByLabel(graph,"has_sentence_frame"), equals(5));
+  })
 }
 
 unitTest <- function(testName, actualValue, expectedValue){
@@ -84,8 +95,8 @@ createTestDataFile <- function(testData, fileName){
 
 benchmark <- function(){
   microbenchmark(
-    createWordnetGraph(dictPath = "./testData", verbose=FALSE),
-    createWordnetGraphMem(dictPath = "./testData", verbose=FALSE),
+    createWordnetGraph(dictPath = "./newTestData", verbose=FALSE),
+    createWordnetGraphMem(dictPath = "./newTestData", verbose=FALSE),
     times=25L
   )
 }

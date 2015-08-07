@@ -509,7 +509,7 @@ createSingleLexicalPointer <- function(transaction, data){
   query <- "MATCH (a:Word {name:{startWord}}), (b:Word {name:{endWord}})
             CREATE (a)-[:has_pointer {relation:'Lexical', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}, synsetId:{startId}}]->(b)";  
   appendCypher(transaction, query, startWord = data$startWord, endWord = data$endWord,
-               pointerSymbol = data$pointerSymbol, pointerType = data$pointerType);
+               pointerSymbol = data$pointerSymbol, pointerType = data$pointerType, startId=data$startId);
 }
 
 #--------------------------------------------------------------------------------------
