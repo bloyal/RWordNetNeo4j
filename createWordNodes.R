@@ -1,5 +1,5 @@
 #createWordNodes.R
-source('createWordNetNeo4j.R');
+#source('createWordNetNeo4j.R');
 
 #if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
 #wordFrame<- readPOSWordIndex( "./testData2", verbose=TRUE){

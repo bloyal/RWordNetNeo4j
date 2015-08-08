@@ -1,6 +1,6 @@
-#getWord
+#getWordInfo.R
 library(reshape)
-getWord <- function(graph, word){
+getWordInfo <- function(graph, word){
   #get semantic pointer info
   query<-"match (a:Word {name:{word}})-[r:has_synset]->(b:Synset),
           (b)-[r2:has_pointer]->(c)<-[r3:has_synset]-(d:Word)

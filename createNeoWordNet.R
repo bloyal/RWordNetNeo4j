@@ -1,32 +1,18 @@
-#createWordNetNeo4j.R
+#createNeoWordNet.R
 #Functions for creating a WordNet db in Neo4j
-setwd("~/GitHub/RWordNetNeo4j")
 
 library(RNeo4j);
 library(R.utils);
 library(stringr);
 library(plyr);
-source('genericGraphFunctions.R');
-source('testFunctions.R');
-source('downloadWordNetFiles.R');
+
 #--------------------------------------------------------------------------------------
 #--------------------------------------------------------------------------------------
 
-#runIntegrationTests();
-
-downloadAndCreateWordNetGraph <- function(
-    url="http://wordnetcode.princeton.edu/wn3.1.dict.tar.gz",
-    dest=getwd(), 
-    username="neo4j",
-    password="graph",
-    verbose=TRUE){
-  dictPath<-downloadWordNetFiles(url=url, dest=dest, verbose=verbose);
-  createWordNetGraph(dictPath=dictPath, verbose=verbose);
-}
-
-createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose=TRUE, username="neo4j", password="graph"){
+createNeoWordNet <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose=TRUE, username="neo4j", password="graph"){
   if(verbose) {print(paste(Sys.time(),"Starting graph creation", sep=": "))};
   if(verbose) {print(paste(Sys.time(),"Clearing Neo4j data", sep=": "))};
+  
   #Initialize graph
   graph<-newGraph(username=username, password=password);
   
@@ -46,10 +32,6 @@ createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose
   if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
   createWordNodes(graph, wordFrame, verbose=verbose);
   
-  #DELETE ME!!!!!!
-#   if(verbose) {print(paste(Sys.time(),"Creating synset-word relationships", sep=": "))};
-#   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
-  
   #Create semantic pointers
   if(verbose) {print(paste(Sys.time(),"Creating pointer frame", sep=": "))};
   pointerFrame <- ldply(lapply(wordNetData, getSynsetPointerFrame));
@@ -57,7 +39,6 @@ createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose
   
   if(verbose) {print(paste(Sys.time(),"Creating word frame", sep=": "))};
   wordFrame <- ldply(lapply(wordNetData, getWordFrame));
-#  createWordNodes(graph, wordFrame, verbose=verbose);
   
   #Create lexical pointers
   pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!=0,], wordFrame);
@@ -69,6 +50,8 @@ createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose
   createVerbFrameRelationships(graph, verbFrameFrame, verbose=verbose);
   
   if(verbose) {print(paste(Sys.time(),"Graph creation complete", sep=": "))};
+  
+  return(graph);
 }
 
 #--------------------------------------------------------------------------------------
@@ -79,16 +62,13 @@ createWordNetGraph <- function(dictPath = paste(getwd(),"dict",sep="/"), verbose
 # http://wordnet.princeton.edu/wordnet/man/lexnames.5WN.html
 createLexNodes <- function(graph, dictPath = "~/Downloads/WordNet-3.0/dict", verbose=TRUE) {
   if(verbose) {print(paste(Sys.time(),"Creating lexicographer file nodes", sep=": "))};
-  #lexData <- getLexNames(dictPath, verbose);
   lexData <- getLexNames(verbose);
   addIndex(graph,"LexName","fileNumber");
   bulkGraphUpdate(graph, lexData, createSingleLexNode);
 }
 
-#getLexNames <- function(dictPath, verbose){
 getLexNames <- function(verbose){
   if(verbose) {print(paste(Sys.time(),"Retrieving lex file names", sep=": "))};
-  #lexData<-read.table(paste(dictPath,"lexnames", sep="/"), sep="\t", col.names=c("fileNumber","fileName","synCat"),stringsAsFactors=FALSE);
   lexData<-read.table("lexnames", sep="\t", col.names=c("fileNumber","fileName","synCat"),stringsAsFactors=FALSE);
   lexData$synCat <- updateSynCat(lexData$synCat);
   lexData["description"] <- getLexDescriptions();
@@ -199,10 +179,7 @@ readPosDataFile <- function(path="~/Downloads/WordNet-3.0/dict/data.verb"){
 
 processSynsetData <- function(synsetData){
   synsetData <- matchSynsetParts(synsetData);
-  #print(synsetData);
-  x<-convertSynsetPartsToDf(synsetData);
-  #print(x);
-  x;
+  convertSynsetPartsToDf(synsetData);
 }
 
 matchSynsetParts <- function(dataRecord){
@@ -217,9 +194,6 @@ convertSynsetPartsToDf <- function(synsetParts){
                                             pos = x[4],
                                             posName = translatePOS(x[4]),
                                             wCnt = strtoi(x[5],16),
-                                            #words = str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[2],
-                                            #pCnt = as.integer(str_match(x[6],"(^.+ \\d{1}) (\\d{3})")[3]),
-                                            #pointers = str_match(x[6],"\\d{3} (.+$)")[2],
                                             words = str_match(x[6],"(^.+ [0-9a-f]{1}) (\\d{3})(\\s|$)")[2],
                                             pCnt = as.integer(str_match(x[6],"(^.+ [0-9a-f]{1}) (\\d{3})(\\s|$)")[3]),
                                             pointers = str_match(x[6],"\\d{3} (.+$)")[2],
@@ -228,11 +202,10 @@ convertSynsetPartsToDf <- function(synsetParts){
                                             stringsAsFactors = FALSE));
 }
 
-#Createsynset nodes and lex relationships
+#Create synset nodes and lex relationships
 
 createSynsetNodes <- function(graph,posList, verbose=TRUE){
   if(verbose) {print(paste(Sys.time(),"Creating synset nodes and lex file relationships", sep=": "))};
-  #addIndex(graph, "Synset","synsetOffset");
   addIndex(graph, "Synset","synsetId");
   invisible(lapply(posList, createPOSSpecificSynsetNodes, graph, verbose));
 }
@@ -267,8 +240,6 @@ createSingleSynsetNode  <- function(transaction, data){
   }
 
 createSingleSynsetLexRelationship <- function(transaction, data){
-#   query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}, pos:{pos}}), (b:LexName {fileNumber:{fileNumber}})
-#   CREATE (a)-[:has_lexicographer_file]->(b)";  
   query <- "MATCH (a:Synset {synsetId:{synsetId}}), (b:LexName {fileNumber:{fileNumber}})
   CREATE (a)-[:has_lexicographer_file]->(b)";  
   appendCypher(transaction, query, 
@@ -318,12 +289,9 @@ readPosWordDataFile <- function(path="~/Downloads/WordNet-3.0/dict/data.verb", p
 }
 
 processWordData <- function(wordData,posCode){
-  #print(wordData);
   words<-ldply(str_match_all(wordData,"^(\\S+) ([arnv] .+ \\d) (\\d{8}.*)"))[,c(2,4)];
   names(words)=c("name", "synsetOffset");
-  #print(words);
   ldply(apply(words, 1, function(line){
-    #print(line["synsetOffset"]);
     synsetOffsets<-str_match_all(line["synsetOffset"], "(\\S{8})")[[1]][,1];
     df<-data.frame(name=str_replace_all(str_to_lower(line["name"]),"_"," "), synsetId=calcSynsetId(synsetOffsets,posCode), stringsAsFactors = FALSE, row.names=NULL);
     cbind(df,wordNum=as.numeric(rownames(df)));
@@ -332,25 +300,17 @@ processWordData <- function(wordData,posCode){
 
 createWordNodes <- function(graph, wordFrame, verbose=TRUE){
   addIndex(graph, "Word", "name");
-  #print(typeof(wordFrame));
-  #print(wordFrame);
-  if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
   bulkGraphUpdate(graph, data.frame(name=unique(wordFrame$name,stringsAsFactors=FALSE)), createSingleWordNode);
   if(verbose) {print(paste(Sys.time(),"Creating synset-word relationships", sep=": "))};
   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
 }
 
 createSingleWordNode <- function(transaction, data){
-  #print(data);
   query <- "CREATE (:Word {name:{name}})";  
-  #appendCypher(transaction, query, name = data$name);
   appendCypher(transaction, query, name = data);
 }
 
 createSingleSynsetWordRelationship <- function(transaction, data){
-  #print(data)
-  #   query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}, pos:{pos}}), (b:Word {name:{name}})
-  #   CREATE (a)-[:has_word {wordNum:{wordNum}}]->(b)";  
   query <- "MATCH (a:Word {name:{name}}), (b:Synset {synsetId:{synsetId}})
   CREATE (a)-[:has_synset {wordNum:{wordNum}}]->(b)"; 
   appendCypher(transaction, query, synsetId = data$synsetId, name = data$name, wordNum = data$wordNum);
@@ -360,78 +320,39 @@ createSingleSynsetWordRelationship <- function(transaction, data){
 #--------------------------------------------------------------------------------------
 # Functions for creating word frame for lexical pointers
 #--------------------------------------------------------------------------------------
-# 
-# createWordNodes <- function(graph, wordFrame, verbose=TRUE){
-#   addIndex(graph, "Word", "name");
-#   #print(typeof(wordFrame));
-#   if(verbose) {print(paste(Sys.time(),"Creating word nodes", sep=": "))};
-#   bulkGraphUpdate(graph, wordFrame, createSingleWordNode);
-#   if(verbose) {print(paste(Sys.time(),"Creating synset-word relationships", sep=": "))};
-#   bulkGraphUpdate(graph, wordFrame, createSingleSynsetWordRelationship);
-# }
-# 
+
 #Create word frame
 getWordFrame <- function(synsetData){
   z<-apply(synsetData, 1, transformSynsetDataToWordMap)
   ldply(z)
 }
 
-# #process single line of synset data (inside apply) to create a narrow data frame with the offset and words
+#Process single line of synset data (inside apply) to create a narrow data frame with the offset and words
 transformSynsetDataToWordMap <- function(synsetLine){
   offset<-synsetLine["synsetOffset"];
   pos<-synsetLine["pos"];
   words<-str_replace_all(str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]),"_"," ");
-  #words<-str_to_lower(str_match_all(synsetLine["words"], "(\\S+) [0-9a-f]")[[1]][,2]);
-  #df<-data.frame(synsetOffset=offset, pos=pos, name=words, stringsAsFactors=FALSE, row.names=NULL);
   df<-data.frame(synsetId=calcSynsetId(offset, pos), name=words, stringsAsFactors=FALSE, row.names=NULL);
   cbind(df,wordNum=as.numeric(rownames(df)));
 }
-# 
-# createSingleWordNode <- function(transaction, data){
-#   query <- "MERGE (:Word {name:{name}})";  
-#   appendCypher(transaction, query, name = data$name);
-# }
-# 
-# createSingleSynsetWordRelationship <- function(transaction, data){
-#   #print(data)
-# #   query <- "MATCH (a:Synset {synsetOffset:{synsetOffset}, pos:{pos}}), (b:Word {name:{name}})
-# #   CREATE (a)-[:has_word {wordNum:{wordNum}}]->(b)";  
-#   query <- "MATCH (a:Synset {synsetId:{synsetId}}), (b:Word {name:{name}})
-#   CREATE (a)-[:has_word {wordNum:{wordNum}}]->(b)"; 
-#   appendCypher(transaction, query, synsetId = data$synsetId, name = data$name, wordNum = data$wordNum);
-# }
 
 #--------------------------------------------------------------------------------------
 # Functions for creating semantic pointers
 #--------------------------------------------------------------------------------------
 
 getSynsetPointerFrame <- function(synsetData){
-  #print(synsetData[1,5]);
-  #convert Synset data into a data frame with x columns: 
-  #start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
-  #z<-apply(synsetData[!is.na(synsetData$pointers),], 1, transformSynsetDataToSynPointerMap)
   z<-apply(synsetData[synsetData$pCnt>0,], 1, transformSynsetDataToSynPointerMap)
   z<-ldply(z);
-#   #remove this assignment - i was using it for troubleshooting on tuesday morning
-#   x<-translateMultiPointerSymbols(z$pointerSymbol, z$endPOS) #Why is this missing 3 records?
   y<-cbind(z, pointerType = translateMultiPointerSymbols(z$pointerSymbol, z$startPOS), stringsAsFactors = FALSE);
 }
 
-#process single line of synset data (inside apply) to create a narrow data frame with x columns: 
-#start SynID, Start POS, Rel type, End Syn ID, End POS, Start Word, End Word
+#process single line of synset data (inside apply) to create a narrow data frame with pointer dat: 
 transformSynsetDataToSynPointerMap <- function(synsetLine){
-#   startOffset<-synsetLine["synsetOffset"];
    startPOS<-synsetLine["pos"];
   startId<-calcSynsetId(synsetLine["synsetOffset"], synsetLine["pos"]);
-  #print(startOffset);
   pointers<-str_match_all(synsetLine["pointers"], "(\\S{1,2}) (\\d{8}) ([nvasr]) ([0-9a-f]{2})([0-9a-f]{2})")[[1]];
   endPOS<-pointers[,4];
   endId<-calcSynsetId(pointers[,3], pointers[,4]);
-  #print(pointers)
-#   data.frame(startOffset=startOffset, startPOS=startPOS, 
-#              pointerSymbol=pointers[,2], endOffset=pointers[,3], endPOS=pointers[,4],
-#              startWordNum=strtoi(pointers[,5],16), endWordNum=strtoi(pointers[,6],16),
-#              stringsAsFactors=FALSE, row.names=NULL);
   data.frame(startId=startId, pointerSymbol=pointers[,2], endId=endId, startPOS=startPOS,endPOS=endPOS,
              startWordNum=strtoi(pointers[,5],16), endWordNum=strtoi(pointers[,6],16),
              stringsAsFactors=FALSE, row.names=NULL);
@@ -439,14 +360,10 @@ transformSynsetDataToSynPointerMap <- function(synsetLine){
 
 createSemanticPointers <- function(graph, synsetPointerFrame, verbose=TRUE){
   if(verbose) {print(paste(Sys.time(),"Creating semantic synset pointers", sep=": "))};
-  #print(nrow(synsetPointerFrame));
   bulkGraphUpdate(graph, synsetPointerFrame, createSingleSemanticPointer);
 }
 
 createSingleSemanticPointer <- function(transaction, data){
-#   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), 
-#               (b:Synset {synsetOffset:{endOffset}, pos:{endPOS}})
-#             CREATE (a)-[:has_pointer {relation:'Semantic', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}}]->(b)";  
   query <- "MATCH (a:Synset {synsetId:{startId}}), (b:Synset {synsetId:{endId}})
   CREATE (a)-[:has_pointer {relation:'Semantic', pointerSymbol:{pointerSymbol}, pointerType:{pointerType}, synsetId:{startId}}]->(b)";  
   
@@ -459,7 +376,8 @@ createSingleSemanticPointer <- function(transaction, data){
 #--------------------------------------------------------------------------------------
 
 getLexicalPointerWords <- function(pointerFrame, wordFrame){
-  #Remove derivationally-derived form pointers (These cause lexical pointers that loop back on themselves without any value)
+  #Remove derivationally-derived form pointers (These cause lexical pointers that loop back 
+  #on themselves without really adding any value)
   pointerFrame<-pointerFrame[pointerFrame$pointerSymbol!="+",];
   
   #Add empty columns for start and end words
@@ -477,17 +395,6 @@ getLexicalPointerWords <- function(pointerFrame, wordFrame){
 }
 
 searchForLexicalWords <- function(pointerLine, wordFrame){
-  
-#   list(
-#     startWord=wordFrame[wordFrame$synsetOffset==pointerLine$startOffset & 
-#                           wordFrame$pos==pointerLine$startPOS & 
-#                           wordFrame$wordNum==pointerLine$startWordNum,
-#                         "name"],
-#     endWord=wordFrame[wordFrame$synsetOffset==pointerLine$endOffset & 
-#                         wordFrame$pos==pointerLine$endPOS & 
-#                         wordFrame$wordNum==pointerLine$endWordNum,
-#                       "name"]
-#   );
   
   list(
     startWord=wordFrame[wordFrame$synsetId==pointerLine$startId & 
@@ -528,14 +435,8 @@ createVerbFrameRelationships <- function (graph, verbFrameFrame, verbose){
 
 #process single line of synset data (inside apply) to create a narrow data frame
 transformSynsetDataToFrameMap <- function(synsetLine){
-#   startOffset<-synsetLine["synsetOffset"];
-#   startPOS<-synsetLine["pos"];
   startId<-calcSynsetId(synsetLine["synsetOffset"],synsetLine["pos"]);
-  #print(startOffset);
   frames<-ldply(strsplit(str_match_all(synsetLine["frames"], "(\\d{2} [0-9a-f]{2})")[[1]][,1]," "));
-#   frameFrame<-data.frame(startOffset=startOffset, startPOS=startPOS, 
-#              frameNumber=as.numeric(frames$V1), wordNum=strtoi(frames$V2,16),
-#              stringsAsFactors=FALSE, row.names=NULL);
   frameFrame<-data.frame(startId=startId,
                          frameNumber=as.numeric(frames$V1), wordNum=strtoi(frames$V2,16),
                          stringsAsFactors=FALSE, row.names=NULL);
@@ -544,15 +445,10 @@ transformSynsetDataToFrameMap <- function(synsetLine){
     ifelse(x["wordNum"] == 0,"",getWordByNumber(synsetLine[["words"]], x[["wordNum"]]))
     }
   )
-  #word<-ldply(word);
   cbind(frameFrame, word=word,stringsAsFactors=FALSE);
 }
 
 createSingleSynsetFrameRelationship <- function(transaction, data){
-#   query <- "MATCH (a:Synset {synsetOffset:{startOffset}, pos:{startPOS}}), (b:VerbFrame {number:{frameNumber}})
-#             CREATE (a)-[:has_sentence_frame {synsetOffset:{startOffset}, synsetPOS:{startPOS}}]->(b)";  
-#   appendCypher(transaction, query, startOffset = data$startOffset, startPOS = data$startPOS,
-#                frameNumber = data$frameNumber)
   query <- "MATCH (a:Synset {synsetId:{startId}}), (b:VerbFrame {number:{frameNumber}})
             CREATE (a)-[:has_sentence_frame {synsetId:{startId}}]->(b)";  
   appendCypher(transaction, query, startId = data$startId, frameNumber = data$frameNumber)
@@ -571,7 +467,6 @@ createSingleWordFrameRelationship <- function(transaction, data){
 #--------------------------------------------------------------------------------------
 
 convertWordsToCommaDelimitedList <- function(words){
-  #print(words);
   str<-strsplit(words," ")[[1]];
   str<-str[seq(1, length(str), 2)]
   paste(str, collapse=", ");
@@ -582,7 +477,6 @@ findSynsetData <- function(offset, data){
 }
 
 calcSynsetId <- function(synsetOffset, pos){
-  #print(paste(synsetOffset,pos,sep="-"));
   strtoi(paste(translatePOSToNum(pos),synsetOffset, sep=""),10L);
 }
 
@@ -657,47 +551,43 @@ translateLexFilenum <- function(lexFilenum){
 
 translateMultiPointerSymbols <- function(symbolVector, posVector){
   input <- data.frame(symbol = symbolVector, pos = posVector, stringsAsFactors = FALSE);
-  #print(nrow(input));
   unlist(apply(input, 1, translateSynsetPointerSymbol));
-  #apply(input, 1, translateSynsetPointerSymbol);
 }
 
 translateSynsetPointerSymbol <- function(input){
   if(input["symbol"]=='\\'){
-    output<-switch(input["pos"],
+    switch(input["pos"],
            a = "Pertainym (Pertains to Noun)",
            s = "Pertainym (Pertains to Noun)",
            r = "Derived from Adjective",
            n = "Derivationally Related Form")
   }
-  else if(input["symbol"]=="!"){output<-"Antonym"}
-  else if(input["symbol"]=="~"){output<-"Hyponym"}
-  else if(input["symbol"]=="~i"){output<-"Instance Hyponym"}
-  else if(input["symbol"]=="-c"){output<-"Member of this Domain - TOPIC"}
-  else if(input["symbol"]=="-r"){output<-"Member of this Domain - REGION"}
-  else if(input["symbol"]=="-u"){output<-"Member of this Domain - USAGE"}
-  else if(input["symbol"]==";c"){output<-"Domain of Synset - TOPIC"}
-  else if(input["symbol"]==";r"){output<-"Domain of Synset - REGION"}
-  else if(input["symbol"]==";u"){output<-"Domain of Synset - USAGE"}
-  else if(input["symbol"]=="@"){output<-"Hypernym"}
-  else if(input["symbol"]=="@i"){output<-"Instance Hypernym"}
-  else if(input["symbol"]=="*"){output<-"Entailment"}
-  else if(input["symbol"]=="&"){output<-"Similar To"}
-  else if(input["symbol"]=="#m"){output<-"Member Holonym"}
-  else if(input["symbol"]=="#p"){output<-"Part Holonym"}
-  else if(input["symbol"]=="#s"){output<-"Substance Holonym"}
-  else if(input["symbol"]=="%m"){output<-"Member Meronym"}
-  else if(input["symbol"]=="%p"){output<-"Part Meronym"}
-  else if(input["symbol"]=="%s"){output<-"Substance Meronym"}
-  else if(input["symbol"]=="^"){output<-"Also See"}
-  else if(input["symbol"]=="+"){output<-"Derivationally Related Form"}
-  else if(input["symbol"]=="<"){output<-"Participle of Verb"}
-  else if(input["symbol"]=="="){output<-"Attribute"}
-  else if(input["symbol"]==">"){output<-"Cause"}
-  else if(input["symbol"]=="$"){output<-"Verb Group"}
-  else{output<-"Other"}
-  #if (is.null(output)){print(paste(input["pos"],input["symbol"]))}
-  return(output);
+  else if(input["symbol"]=="!"){"Antonym"}
+  else if(input["symbol"]=="~"){"Hyponym"}
+  else if(input["symbol"]=="~i"){"Instance Hyponym"}
+  else if(input["symbol"]=="-c"){"Member of this Domain - TOPIC"}
+  else if(input["symbol"]=="-r"){"Member of this Domain - REGION"}
+  else if(input["symbol"]=="-u"){"Member of this Domain - USAGE"}
+  else if(input["symbol"]==";c"){"Domain of Synset - TOPIC"}
+  else if(input["symbol"]==";r"){"Domain of Synset - REGION"}
+  else if(input["symbol"]==";u"){"Domain of Synset - USAGE"}
+  else if(input["symbol"]=="@"){"Hypernym"}
+  else if(input["symbol"]=="@i"){"Instance Hypernym"}
+  else if(input["symbol"]=="*"){"Entailment"}
+  else if(input["symbol"]=="&"){"Similar To"}
+  else if(input["symbol"]=="#m"){"Member Holonym"}
+  else if(input["symbol"]=="#p"){"Part Holonym"}
+  else if(input["symbol"]=="#s"){"Substance Holonym"}
+  else if(input["symbol"]=="%m"){"Member Meronym"}
+  else if(input["symbol"]=="%p"){"Part Meronym"}
+  else if(input["symbol"]=="%s"){"Substance Meronym"}
+  else if(input["symbol"]=="^"){"Also See"}
+  else if(input["symbol"]=="+"){"Derivationally Related Form"}
+  else if(input["symbol"]=="<"){"Participle of Verb"}
+  else if(input["symbol"]=="="){"Attribute"}
+  else if(input["symbol"]==">"){"Cause"}
+  else if(input["symbol"]=="$"){"Verb Group"}
+  else{"Other"}
 }
 
 getWordByNumber <- function(synsetWords, wordNum){

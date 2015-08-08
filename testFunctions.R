@@ -19,50 +19,51 @@ runIntegrationTests <-function(dictPath="./newTestData", verbose=FALSE){
     expect_that(countNodesbyLabel(graph, "VerbFrame"), equals(35))
   })
   
-  context("POS Data")
-  test_that("POS data is read in correctly",{
-    wordNetData <- readPOSdata(dictPath, verbose); 
+  wordNetData <- readPOSdata(dictPath, verbose); 
+  context("Read POS Data")
+  test_that("Synset nodes are created correctly",{
     expect_that(nrow(wordNetData$noun), equals(3));
     expect_that(nrow(wordNetData$verb), equals(3))
     expect_that(nrow(wordNetData$adj), equals(3))
     expect_that(nrow(wordNetData$adv), equals(2))
   })
-
+  
+  createSynsetNodes(graph, wordNetData, verbose=verbose);
   context("Synset Nodes")
   test_that("Synset nodes are created correctly",{
-    createSynsetNodes(graph, wordNetData, verbose=verbose);
     expect_that(countNodesbyLabel(graph, "Synset"), equals(11));
     expect_that(countRelationshipsByLabel(graph,"has_lexicographer_file"), equals(11))
   })
   
+  wordFrame<- readPOSWordIndex(dictPath, verbose=verbose)
+  createWordNodes(graph, wordFrame, verbose=verbose);
   context("Word Nodes")
   test_that("Word nodes are created correctly",{
-    wordFrame<- readPOSWordIndex(dictPath, verbose=verbose)
-    createWordNodes(graph, wordFrame, verbose=verbose);
     expect_that(nrow(wordFrame), equals(59));
     expect_that(countNodesbyLabel(graph, "Word"), equals(16));
     expect_that(countRelationshipsByLabel(graph,"has_synset"), equals(14));
   })
-
+  
+  pointerFrame <- ldply(lapply(wordNetData, getSynsetPointerFrame));
+  createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
   context("Semantic Pointers")
   test_that("Semantic pointers are created correctly",{
-    pointerFrame <- ldply(lapply(wordNetData, getSynsetPointerFrame));
-    createSemanticPointers(graph, pointerFrame[pointerFrame$startWordNum==0,], verbose=verbose);
     expect_that(countRelationshipsByLabel(graph,"has_pointer"), equals(6));
   })
 
-  test_that("Lexical pointers are created correctly",{
-    wordFrame <- ldply(lapply(wordNetData, getWordFrame));
-    pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!=0,], wordFrame);
-    createLexicalPointers(graph, pointerFrame, verbose=verbose);
+  wordFrame <- ldply(lapply(wordNetData, getWordFrame));
+  pointerFrame <- getLexicalPointerWords(pointerFrame[pointerFrame$startWordNum!=0,], wordFrame);
+  createLexicalPointers(graph, pointerFrame, verbose=verbose);
+    test_that("Lexical pointers are created correctly",{
     expect_that(countRelationshipsByLabel(graph,"has_pointer"), equals(9));
   })
 
+  verbFrameFrame<- ldply(apply(wordNetData$verb,1,transformSynsetDataToFrameMap));
+  createVerbFrameRelationships(graph, verbFrameFrame, verbose=verbose);
   test_that("Verb frame nodes  are created correctly",{
-    verbFrameFrame<- ldply(apply(wordNetData$verb,1,transformSynsetDataToFrameMap));
-    createVerbFrameRelationships(graph, verbFrameFrame, verbose=verbose);
     expect_that(countRelationshipsByLabel(graph,"has_sentence_frame"), equals(5));
   })
+  return(TRUE);
 }
 
 unitTest <- function(testName, actualValue, expectedValue){
